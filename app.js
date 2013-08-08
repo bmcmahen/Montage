@@ -14,7 +14,7 @@ require('./lib/torrents');
 require('./lib/search');
 require('./lib/playback');
 require('./lib/library/network');
-// require('./client/build')
+require('./client/build')
 
 var streaming = require('./lib/streaming');
 
@@ -40,6 +40,7 @@ app.use(function(req, res, next){
 });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(require('./lib/torrents'));
+app.use(require('./lib/streaming'));
 
 app.get('/', function(req, res){
   res.send(__dirname + '/public/index.html');

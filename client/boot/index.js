@@ -111,7 +111,7 @@ var Session = require('session');
       val.on('change', updateStore);
       previousMovie = val;
       movieView = new MovieView(val).render();
-      $footer.appendChild(movieView.$el);
+      $footer.appendChild(movieView.$el.get());
       $footer.classList.remove('hidden');
     }
   }

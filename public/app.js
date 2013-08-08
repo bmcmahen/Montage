@@ -20604,71 +20604,6 @@ buf.push("<li class=\"label\"><span>Movies</span></li>");
 return buf.join("");
 }
 });
-require.register("bmcmahen-append/index.js", function(exports, require, module){
-module.exports = function(el, content){
-	if (typeof content == 'string') el.innerHTML += content;
-	else el.appendChild(content);
-	return el;
-};
-
-
-});
-require.register("yields-empty/index.js", function(exports, require, module){
-
-/**
- * Empty the given `el`.
- * 
- * @param {Element} el
- * @return {Element}
- */
-
-module.exports = function(el, node){
-  while (node = el.firstChild) el.removeChild(node);
-  return el;
-};
-
-});
-require.register("bmcmahen-html/index.js", function(exports, require, module){
-var empty = require('empty')
-	, append = require('append');
-
-module.exports = function(el, content){
-	return append(empty(el), content);
-};
-});
-require.register("discore-query/index.js", function(exports, require, module){
-module.exports = function (selector, el) {
-  return [].slice.call((el || document).querySelectorAll(selector))
-}
-});
-require.register("discore-remove/index.js", function(exports, require, module){
-var query = require('query')
-
-module.exports = function (arr) {
-  var elements = []
-
-  ;(Array.isArray(arr) ? arr : [arr])
-  .forEach(function (x) {
-    if (!x)
-      return
-
-    if (typeof x === 'string')
-      elements = elements.concat(query(x))
-    else
-      elements.push(x)
-  })
-
-  return elements.filter(function (el) {
-    var parent = el.parentNode
-    if (!parent)
-      return false
-
-    parent.removeChild(el)
-    return true
-  })
-}
-
-});
 require.register("component-format-parser/index.js", function(exports, require, module){
 
 /**
@@ -21777,13 +21712,9 @@ exports.get = function(obj, prop) {
 require.register("movie/index.js", function(exports, require, module){
 var Session = require('../session');
 var ddp = require('../sockets').ddp;
-var domify = require('domify');
-var Model = require('backbone').Model;
-var $ = require('jquery');
+
+var dom = require('dom');
 var events = require('events');
-var query = require('query');
-var html = require('html');
-var remove = require('remove');
 var reactive = require('reactive');
 var bind = require('event');
 var loading = require('loading');
@@ -21817,8 +21748,9 @@ reactive.unsubscribe(function(obj, prop, fn){
 function TabView(movie, init){
 	this.init = init || 'playView';
 	this.movie = movie;
-	this.$el = domify(require('./templates/movie-view.html'));
-	this.$content = query('.tab-content', this.$el);
+	this.$el = dom(require('./templates/container.html'));
+	this.el = this.$el.get();
+	this.$content = this.$el.find('.tab-content');
 }
 
 EmitterManager(TabView.prototype);
@@ -21833,50 +21765,11 @@ TabView.prototype.render = function(){
 
 // use once, use retry... maybe make a component for this.
 TabView.prototype.renderImage = function(){
-	// var backdrop = this.movie.get('original_backdrop_path');
-	// console.log('background', backdrop);
-	// var background = query('#background-image', this.$el);
-	// var url = '/movies/w1280'+ backdrop;
-
-	// var defaultBackground = function(){
-	// 	background.classList.add('noimage');
-	// 	background.classList.add('fadeIn');
-	// };
-
-
-	// var tries = 0;
-	// var tryImage = function(){
-	// 	if (backdrop){
-	// 		var img = document.createElement('img');
-	// 		img.onload = function(){
-	// 			console.log('load!', url);
-	// 			background.style['background-image'] = 'url("'+ url +'")';
-	// 			setTimeout(function(){
-	// 				background.classList.add('fadeIn');
-	// 			}, 0);
-	// 		};
-	// 		img.onerror = function(){
-	// 			if (tries > 2) return defaultBackground();;
-	// 			setTimeout(function(){
-	// 				tryImage();
-	// 				tries++;
-	// 			}, 1000);
-	// 			console.log('loading error...');
-	// 		}
-	// 		console.log('new source', url);
-	// 		img.src = url;
-	// 	} else {
-	// 		defaultBackground();
-	// 	}
-	// }
-
-	// tryImage();
-
 
 };
 
 TabView.prototype.bind = function(){
-	this.events = events(this.$el, this);
+	this.events = events(this.$el.get(), this);
 	this.events.bind('click #tab-one', 'playView');
 	this.events.bind('click #tab-two', 'metaView');
 	this.events.bind('click #tab-three', 'subtitleView');
@@ -21887,7 +21780,7 @@ TabView.prototype.bind = function(){
 TabView.prototype.close = function(e){
 	this.events.unbind();
 	this.stopListening();
-	remove(this.$el);
+	this.$el.remove();
 };
 
 TabView.prototype.onclose = function(e){
@@ -21898,29 +21791,36 @@ TabView.prototype.onclose = function(e){
 };
 
 TabView.prototype.setActive = function(target){
-	if (this.$active) this.$active.classList.remove('active');
-	target.classList.add('active');
+	if (this.$active) this.$active.removeClass('active');
+	target.addClass('active');
 	this.$active = target;
 }
 
 TabView.prototype.playView = function(e){
 	if (e) e.preventDefault();
-	this.setActive(query('#tab-one', this.$el));
-	html(this.$content, new MovieView(this.movie).render().$el);
-	var img = this.$content.querySelector('img');
+	this.setActive(this.$el.find('#tab-one'));
+	this.$content
+		.empty()
+		.append(new MovieView(this.movie).render().$el);
+
+	var img = this.$content.find('img').get();
 	if (img) onload(img);
 };
 
 TabView.prototype.metaView = function(e){
 	e.preventDefault();
-	this.setActive(query('#tab-two', this.$el));
-	html(this.$content, new EditMeta(this.movie).$el);
+	this.setActive(this.$el.find('#tab-two'));
+	this.$content
+		.empty()
+		.append(new EditMeta(this.movie).$el);
 };
 
 TabView.prototype.subtitleView = function(e){
 	e.preventDefault();
-	this.setActive(query('#tab-three', this.$el));
-	html(this.$content, 'subtitle view');
+	this.setActive(this.$el.find('#tab-three'));
+	this.$content
+		.empty()
+		.append('subtitle view');
 };
 
 
@@ -21930,14 +21830,20 @@ TabView.prototype.subtitleView = function(e){
 
 function MovieView(movie){
 	this.model = movie;
-	this.$el = domify(require('./templates/movie.html'));
+	this.$el = dom(require('./templates/playback.html'));
+	this.playbackDevice = 'local';
 }
 
 
 MovieView.prototype.render = function(){
-	reactive(this.$el, this.model, this);
+	reactive(this.$el.get(), this.model, this);
 	return this;
 };
+
+MovieView.prototype.setPlaybackDevice = function(){
+	var selected = this.$el.find('select').value();
+	this.playbackDevice = selected;
+}
 
 MovieView.prototype.rewind = function(e){
 	e.preventDefault();
@@ -21960,10 +21866,21 @@ MovieView.prototype.forward = function(e){
 	console.log('forward')
 };
 
-
+MovieView.prototype.playbackLocal = function(){
+	var video = dom('<video></video>');
+	video.src('/videos/'+ this.model.id);
+	this.$el
+		.find('#main-playback')
+		.empty()
+		.append(video);
+}
 
 MovieView.prototype.play = function(e){
 	e.preventDefault();
+
+	if (this.playbackDevice === 'local') {
+		return this.playbackLocal();
+	}
 
 	if (this.model.get('isPlaying')) {
 		ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
@@ -21986,18 +21903,18 @@ MovieView.prototype.play = function(e){
 
 function EditMeta(movie){
 	this.model = movie;
-	this.$el = domify(require('./templates/edit-meta.html'));
+	this.$el = dom(require('./templates/meta.html'));
 	this.bind();
 }
 
 EditMeta.prototype.bind = function(){
-	this.events = events(this.$el, this);
+	this.events = events(this.$el.get(), this);
 	this.events.bind('submit form', 'searchMovie');
 }
 
 EditMeta.prototype.close = function(){
 	this.events.unbind();
-	remove(this.$el);
+	this.$el.remove();
 }
 
 EditMeta.prototype.renderResults = function(res){
@@ -22005,11 +21922,13 @@ EditMeta.prototype.renderResults = function(res){
 	var fragment = document.createDocumentFragment();
 	this.results = results.map(function(movie){
 		var view = SearchResult(this.model, movie);
-		fragment.appendChild(view.$el);
+		fragment.appendChild(view.$el.get());
 		return view;
 	}, this);
-	var searchContainer = query('#search-results', this.$el);
-	html(searchContainer, fragment);
+	this.$el
+		.find('#search-results')
+		.empty()
+		.append(fragment);
 };
 
 EditMeta.prototype.searchMovie = function(e){
@@ -22019,9 +21938,9 @@ EditMeta.prototype.searchMovie = function(e){
 			res.close();
 		}, this);
 	}
-	var name = query('input', this.$el).value;
+	var name = this.$el.find('input').val();
 	var self = this;
-	var loader = loading(this.$el);
+	var loader = loading(this.$el.get());
 	ddp.ready(function(){
 		ddp.call('queryMeta', name, function(err, res){
 			loader.finish();
@@ -22038,12 +21957,12 @@ EditMeta.prototype.searchMovie = function(e){
 
 function SearchResult(model, json){
 
-	var $el = domify(require('./templates/meta-search-result')(json));
+	var $el = dom(require('./templates/meta-search-result')(json));
 
   var selectThis = function(){
-  	var loader = loading($el);
+  	var loader = loading($el.get());
   	var m = model.toJSON();
-  	$el.classList.add('active');
+  	$el.addClass('active');
   	delete m.isSelected;
   	ddp.apply('updateMeta', [m, json.id], function(err, res){
   		if (err) return loader.failure();
@@ -22056,8 +21975,8 @@ function SearchResult(model, json){
   return {
     $el: $el,
     close: function(){
-    	remove($el);
-      bind.unbind($el, 'click', selectThis);
+    	$el.remove();
+      bind.unbind($el.get(), 'click', selectThis);
     }
   }
 }
@@ -22519,7 +22438,7 @@ var Session = require('session');
       val.on('change', updateStore);
       previousMovie = val;
       movieView = new MovieView(val).render();
-      $footer.appendChild(movieView.$el);
+      $footer.appendChild(movieView.$el.get());
       $footer.classList.remove('hidden');
     }
   }
@@ -22834,19 +22753,16 @@ module.exports = 'li.label\n	span Movies';
 });
 
 
-
-
-
-require.register("movie/templates/movie.html", function(exports, require, module){
-module.exports = '<div>\n\n	<div class=\'segment clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n			<p data-show=\'release_date\' class=\'meta release-date\'>  {release_date} </p>\n			<p data-show=\'runtime\' class=\'meta\'> {runtime + \' Minutes\'} </p>\n			<p data-show=\'budget\' class=\'meta\'> {\'$\' + budget} </p>\n			<p data-show=\'plot\'> {plot} </p>\n		</div>\n	</div>\n\n	<div class=\'controls segment\'>\n		<a class=\'control back\' href=\'#\' on-click=\'rewind\'>\n			<i class=\'icon-backward-2\'></i>\n		</a>\n		<a class=\'control play\' href=\'#\' on-click=\'play\'>\n			<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n			<i class=\'icon-stop-2\' data-show=\'isPlaying\'></i>\n		</a>\n		<a class=\'control forward\' href=\'#\' on-click=\'forward\'>\n			<i class=\'icon-forward-2\'></i>\n		</a>\n	</div>\n</div>\n\n\n';
+require.register("movie/templates/playback.html", function(exports, require, module){
+module.exports = '<div>\n\n	<div id=\'main-playback\' class=\'segment clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n			<p data-show=\'release_date\' class=\'meta release-date\'>  {release_date} </p>\n			<p data-show=\'runtime\' class=\'meta\'> {runtime + \' Minutes\'} </p>\n			<p data-show=\'budget\' class=\'meta\'> {\'$\' + budget} </p>\n			<p data-show=\'plot\'> {plot} </p>\n		</div>\n	</div>\n\n	<div class=\'segment\'>\n		<div id=\'toggle\'>\n			<select on-change=\'setPlaybackDevice\'>\n				<option value=\'local\'>This Device</option>\n				<option value=\'remote\'>Television</option>\n			</select>\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-stop-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n	</div>\n\n</div>\n\n\n';
 });
-require.register("movie/templates/movie-view.html", function(exports, require, module){
+require.register("movie/templates/container.html", function(exports, require, module){
 module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
 });
 require.register("movie/templates/meta-search-result.jade", function(exports, require, module){
 module.exports = 'li.list-group-item\n	a=locals.title + \' [\'+locals.release_date+\']\'\n	i.loader.pull-right\n';
 });
-require.register("movie/templates/edit-meta.html", function(exports, require, module){
+require.register("movie/templates/meta.html", function(exports, require, module){
 module.exports = '<div class=\'span6 offset3\'>\n	<div class=\'row\'>\n		<div class=\'span12 center-text\'>\n			<form id=\'meta-search\' class=\'inline-block inline\'>\n				<input type=\'text\' class=\'search-title\' placeholder=\'Movie Title\'><input type=\'submit\' value=\'Find Movie\'>\n			</form>\n		</div>\n	</div>\n	<div class=\'row\'>\n		<div class=\'span10 offset1\'>\n			<i class=\'loader light\'></i>\n			<ul id=\'search-results\' class=\'list-group\'>\n			</ul>\n		</div>\n	</div>';
 });
 
@@ -23332,19 +23248,6 @@ require.alias("session/index.js", "session/index.js");
 require.alias("drawer/index.js", "drawer/index.js");
 require.alias("movie/index.js", "boot/deps/movie/index.js");
 require.alias("movie/index.js", "boot/deps/movie/index.js");
-require.alias("component-emitter/index.js", "movie/deps/emitter/index.js");
-require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
-
-require.alias("component-jquery/index.js", "movie/deps/jquery/index.js");
-
-require.alias("component-underscore/index.js", "movie/deps/underscore/index.js");
-
-require.alias("bmcmahen-backbone/index.js", "movie/deps/backbone/index.js");
-require.alias("bmcmahen-backbone/backbone.js", "movie/deps/backbone/backbone.js");
-require.alias("component-underscore/index.js", "bmcmahen-backbone/deps/underscore/index.js");
-
-require.alias("component-jquery/index.js", "bmcmahen-backbone/deps/jquery/index.js");
-
 require.alias("component-onload/index.js", "movie/deps/onload/index.js");
 require.alias("component-classes/index.js", "component-onload/deps/classes/index.js");
 require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
@@ -23360,25 +23263,6 @@ require.alias("component-query/index.js", "component-matches-selector/deps/query
 
 require.alias("component-event/index.js", "component-delegate/deps/event/index.js");
 
-require.alias("component-domify/index.js", "movie/deps/domify/index.js");
-
-require.alias("component-query/index.js", "movie/deps/query/index.js");
-
-require.alias("bmcmahen-html/index.js", "movie/deps/html/index.js");
-require.alias("bmcmahen-html/index.js", "movie/deps/html/index.js");
-require.alias("bmcmahen-append/index.js", "bmcmahen-html/deps/append/index.js");
-require.alias("bmcmahen-append/index.js", "bmcmahen-html/deps/append/index.js");
-require.alias("bmcmahen-append/index.js", "bmcmahen-append/index.js");
-require.alias("yields-empty/index.js", "bmcmahen-html/deps/empty/index.js");
-require.alias("yields-empty/index.js", "bmcmahen-html/deps/empty/index.js");
-require.alias("yields-empty/index.js", "yields-empty/index.js");
-require.alias("bmcmahen-html/index.js", "bmcmahen-html/index.js");
-require.alias("discore-remove/index.js", "movie/deps/remove/index.js");
-require.alias("discore-remove/index.js", "movie/deps/remove/index.js");
-require.alias("discore-query/index.js", "discore-remove/deps/query/index.js");
-require.alias("discore-query/index.js", "discore-remove/deps/query/index.js");
-require.alias("discore-query/index.js", "discore-query/index.js");
-require.alias("discore-remove/index.js", "discore-remove/index.js");
 require.alias("component-reactive/lib/index.js", "movie/deps/reactive/lib/index.js");
 require.alias("component-reactive/lib/utils.js", "movie/deps/reactive/lib/utils.js");
 require.alias("component-reactive/lib/text-binding.js", "movie/deps/reactive/lib/text-binding.js");
@@ -23412,6 +23296,44 @@ require.alias("component-indexof/index.js", "component-classes/deps/indexof/inde
 require.alias("anthonyshort-emitter-manager/index.js", "movie/deps/emitter-manager/index.js");
 require.alias("anthonyshort-map/index.js", "anthonyshort-emitter-manager/deps/map/index.js");
 
+require.alias("component-dom/index.js", "movie/deps/dom/index.js");
+require.alias("component-type/index.js", "component-dom/deps/type/index.js");
+
+require.alias("component-event/index.js", "component-dom/deps/event/index.js");
+
+require.alias("component-delegate/index.js", "component-dom/deps/delegate/index.js");
+require.alias("component-matches-selector/index.js", "component-delegate/deps/matches-selector/index.js");
+require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
+
+require.alias("component-event/index.js", "component-delegate/deps/event/index.js");
+
+require.alias("component-indexof/index.js", "component-dom/deps/indexof/index.js");
+
+require.alias("component-domify/index.js", "component-dom/deps/domify/index.js");
+
+require.alias("component-classes/index.js", "component-dom/deps/classes/index.js");
+require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
+
+require.alias("component-css/index.js", "component-dom/deps/css/index.js");
+
+require.alias("component-sort/index.js", "component-dom/deps/sort/index.js");
+
+require.alias("component-value/index.js", "component-dom/deps/value/index.js");
+require.alias("component-value/index.js", "component-dom/deps/value/index.js");
+require.alias("component-type/index.js", "component-value/deps/type/index.js");
+
+require.alias("component-value/index.js", "component-value/index.js");
+require.alias("component-query/index.js", "component-dom/deps/query/index.js");
+
+require.alias("component-matches-selector/index.js", "component-dom/deps/matches-selector/index.js");
+require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
+
+require.alias("yields-traverse/index.js", "component-dom/deps/traverse/index.js");
+require.alias("yields-traverse/index.js", "component-dom/deps/traverse/index.js");
+require.alias("component-matches-selector/index.js", "yields-traverse/deps/matches-selector/index.js");
+require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
+
+require.alias("yields-traverse/index.js", "yields-traverse/index.js");
 require.alias("movie/index.js", "movie/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");

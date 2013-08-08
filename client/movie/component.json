@@ -2,20 +2,13 @@
   "name": "movie",
   "description": "movie detail",
   "dependencies": {
-    "component/emitter": "*",
-    "component/jquery": "*",
-    "component/underscore": "*",
-    "bmcmahen/backbone": "*",
     "component/onload": "*",
     "component/events": "1.0.4",
-    "component/domify": "*",
-    "component/query": "*",
-    "bmcmahen/html": "*",
-    "discore/remove": "*",
     "component/reactive": "*",
     "component/event": "*",
     "bmcmahen/loading": "*",
-    "anthonyshort/emitter-manager": "*"
+    "anthonyshort/emitter-manager": "*",
+    "component/dom": "*"
   },
   "license": "MIT",
   "main": "index.js",
@@ -30,9 +23,9 @@
     "sockets"
   ],
   "templates": [
-    "templates/movie.html",
-    "templates/movie-view.html",
+    "templates/playback.html",
+    "templates/container.html",
     "templates/meta-search-result.jade",
-    "templates/edit-meta.html"
+    "templates/meta.html"
   ]
 }

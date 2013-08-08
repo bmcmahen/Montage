@@ -1,12 +1,8 @@
 var Session = require('../session');
 var ddp = require('../sockets').ddp;
-var domify = require('domify');
-var Model = require('backbone').Model;
-var $ = require('jquery');
+
+var dom = require('dom');
 var events = require('events');
-var query = require('query');
-var html = require('html');
-var remove = require('remove');
 var reactive = require('reactive');
 var bind = require('event');
 var loading = require('loading');
@@ -40,8 +36,9 @@ reactive.unsubscribe(function(obj, prop, fn){
 function TabView(movie, init){
 	this.init = init || 'playView';
 	this.movie = movie;
-	this.$el = domify(require('./templates/movie-view.html'));
-	this.$content = query('.tab-content', this.$el);
+	this.$el = dom(require('./templates/container.html'));
+	this.el = this.$el.get();
+	this.$content = this.$el.find('.tab-content');
 }
 
 EmitterManager(TabView.prototype);
@@ -56,50 +53,11 @@ TabView.prototype.render = function(){
 
 // use once, use retry... maybe make a component for this.
 TabView.prototype.renderImage = function(){
-	// var backdrop = this.movie.get('original_backdrop_path');
-	// console.log('background', backdrop);
-	// var background = query('#background-image', this.$el);
-	// var url = '/movies/w1280'+ backdrop;
-
-	// var defaultBackground = function(){
-	// 	background.classList.add('noimage');
-	// 	background.classList.add('fadeIn');
-	// };
-
-
-	// var tries = 0;
-	// var tryImage = function(){
-	// 	if (backdrop){
-	// 		var img = document.createElement('img');
-	// 		img.onload = function(){
-	// 			console.log('load!', url);
-	// 			background.style['background-image'] = 'url("'+ url +'")';
-	// 			setTimeout(function(){
-	// 				background.classList.add('fadeIn');
-	// 			}, 0);
-	// 		};
-	// 		img.onerror = function(){
-	// 			if (tries > 2) return defaultBackground();;
-	// 			setTimeout(function(){
-	// 				tryImage();
-	// 				tries++;
-	// 			}, 1000);
-	// 			console.log('loading error...');
-	// 		}
-	// 		console.log('new source', url);
-	// 		img.src = url;
-	// 	} else {
-	// 		defaultBackground();
-	// 	}
-	// }
-
-	// tryImage();
-
 
 };
 
 TabView.prototype.bind = function(){
-	this.events = events(this.$el, this);
+	this.events = events(this.$el.get(), this);
 	this.events.bind('click #tab-one', 'playView');
 	this.events.bind('click #tab-two', 'metaView');
 	this.events.bind('click #tab-three', 'subtitleView');
@@ -110,7 +68,7 @@ TabView.prototype.bind = function(){
 TabView.prototype.close = function(e){
 	this.events.unbind();
 	this.stopListening();
-	remove(this.$el);
+	this.$el.remove();
 };
 
 TabView.prototype.onclose = function(e){
@@ -121,29 +79,36 @@ TabView.prototype.onclose = function(e){
 };
 
 TabView.prototype.setActive = function(target){
-	if (this.$active) this.$active.classList.remove('active');
-	target.classList.add('active');
+	if (this.$active) this.$active.removeClass('active');
+	target.addClass('active');
 	this.$active = target;
 }
 
 TabView.prototype.playView = function(e){
 	if (e) e.preventDefault();
-	this.setActive(query('#tab-one', this.$el));
-	html(this.$content, new MovieView(this.movie).render().$el);
-	var img = this.$content.querySelector('img');
+	this.setActive(this.$el.find('#tab-one'));
+	this.$content
+		.empty()
+		.append(new MovieView(this.movie).render().$el);
+
+	var img = this.$content.find('img').get();
 	if (img) onload(img);
 };
 
 TabView.prototype.metaView = function(e){
 	e.preventDefault();
-	this.setActive(query('#tab-two', this.$el));
-	html(this.$content, new EditMeta(this.movie).$el);
+	this.setActive(this.$el.find('#tab-two'));
+	this.$content
+		.empty()
+		.append(new EditMeta(this.movie).$el);
 };
 
 TabView.prototype.subtitleView = function(e){
 	e.preventDefault();
-	this.setActive(query('#tab-three', this.$el));
-	html(this.$content, 'subtitle view');
+	this.setActive(this.$el.find('#tab-three'));
+	this.$content
+		.empty()
+		.append('subtitle view');
 };
 
 
@@ -153,14 +118,20 @@ TabView.prototype.subtitleView = function(e){
 
 function MovieView(movie){
 	this.model = movie;
-	this.$el = domify(require('./templates/movie.html'));
+	this.$el = dom(require('./templates/playback.html'));
+	this.playbackDevice = 'local';
 }
 
 
 MovieView.prototype.render = function(){
-	reactive(this.$el, this.model, this);
+	reactive(this.$el.get(), this.model, this);
 	return this;
 };
+
+MovieView.prototype.setPlaybackDevice = function(){
+	var selected = this.$el.find('select').value();
+	this.playbackDevice = selected;
+}
 
 MovieView.prototype.rewind = function(e){
 	e.preventDefault();
@@ -183,10 +154,21 @@ MovieView.prototype.forward = function(e){
 	console.log('forward')
 };
 
-
+MovieView.prototype.playbackLocal = function(){
+	var video = dom('<video></video>');
+	video.src('/videos/'+ this.model.id);
+	this.$el
+		.find('#main-playback')
+		.empty()
+		.append(video);
+}
 
 MovieView.prototype.play = function(e){
 	e.preventDefault();
+
+	if (this.playbackDevice === 'local') {
+		return this.playbackLocal();
+	}
 
 	if (this.model.get('isPlaying')) {
 		ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
@@ -209,18 +191,18 @@ MovieView.prototype.play = function(e){
 
 function EditMeta(movie){
 	this.model = movie;
-	this.$el = domify(require('./templates/edit-meta.html'));
+	this.$el = dom(require('./templates/meta.html'));
 	this.bind();
 }
 
 EditMeta.prototype.bind = function(){
-	this.events = events(this.$el, this);
+	this.events = events(this.$el.get(), this);
 	this.events.bind('submit form', 'searchMovie');
 }
 
 EditMeta.prototype.close = function(){
 	this.events.unbind();
-	remove(this.$el);
+	this.$el.remove();
 }
 
 EditMeta.prototype.renderResults = function(res){
@@ -228,11 +210,13 @@ EditMeta.prototype.renderResults = function(res){
 	var fragment = document.createDocumentFragment();
 	this.results = results.map(function(movie){
 		var view = SearchResult(this.model, movie);
-		fragment.appendChild(view.$el);
+		fragment.appendChild(view.$el.get());
 		return view;
 	}, this);
-	var searchContainer = query('#search-results', this.$el);
-	html(searchContainer, fragment);
+	this.$el
+		.find('#search-results')
+		.empty()
+		.append(fragment);
 };
 
 EditMeta.prototype.searchMovie = function(e){
@@ -242,9 +226,9 @@ EditMeta.prototype.searchMovie = function(e){
 			res.close();
 		}, this);
 	}
-	var name = query('input', this.$el).value;
+	var name = this.$el.find('input').val();
 	var self = this;
-	var loader = loading(this.$el);
+	var loader = loading(this.$el.get());
 	ddp.ready(function(){
 		ddp.call('queryMeta', name, function(err, res){
 			loader.finish();
@@ -261,12 +245,12 @@ EditMeta.prototype.searchMovie = function(e){
 
 function SearchResult(model, json){
 
-	var $el = domify(require('./templates/meta-search-result')(json));
+	var $el = dom(require('./templates/meta-search-result')(json));
 
   var selectThis = function(){
-  	var loader = loading($el);
+  	var loader = loading($el.get());
   	var m = model.toJSON();
-  	$el.classList.add('active');
+  	$el.addClass('active');
   	delete m.isSelected;
   	ddp.apply('updateMeta', [m, json.id], function(err, res){
   		if (err) return loader.failure();
@@ -279,8 +263,8 @@ function SearchResult(model, json){
   return {
     $el: $el,
     close: function(){
-    	remove($el);
-      bind.unbind($el, 'click', selectThis);
+    	$el.remove();
+      bind.unbind($el.get(), 'click', selectThis);
     }
   }
 }
