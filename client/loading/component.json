@@ -1,0 +1,15 @@
+{
+  "name": "loading",
+  "description": "global loading indicator",
+  "dependencies": {
+    "component/jquery": "*",
+    "bmcmahen/backbone": "*",
+    "component/underscore": "*",
+    "component/spinner": "*"
+  },
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ]
+}

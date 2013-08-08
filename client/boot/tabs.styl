@@ -1,0 +1,50 @@
+.tabs {
+	border: 2px solid #79A6CC;
+	margin: 3.5% auto;
+	width: auto;
+	overflow: hidden;
+	border-radius: 3px;
+	display: inline-block;
+	box-sizing: border-box;
+}
+
+.tabs li {
+	float: left;
+	margin: 0;
+	padding: 0;
+}
+
+.tabs li a {
+	font-size: 14px;
+	padding: 6px 10px;
+	width: 130px;
+	color: #777;
+	border-right: 2px solid #79A6CC;
+	background: white;
+	display: block;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.tabs li:last-child a {
+	border-right: none;
+}
+
+.tabs li a:hover {
+	background: #e5e3e9;
+}
+
+.tabs li a.active {
+	pointer-events: none;
+	cursor: default;
+}
+
+.tabs li a:active,
+.tabs li a.active {
+	background: #79A6CC;
+	color: white;
+}
+
+.tabs li a.active {
+	pointer-events: none;
+}

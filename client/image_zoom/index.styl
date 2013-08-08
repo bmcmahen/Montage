@@ -1,0 +1,36 @@
+#background-image {
+}
+
+#background-image.noimage {
+  background: rgba(199, 200, 204, 1);
+}
+
+.zoom-background {
+  position: absolute;
+  -webkit-transition: all 0.3s linear;
+  -moz-transition: all 0.3s linear;
+  background-size: cover;
+  background-position-x: 50%;
+}
+
+.zoom-background.no-image {
+  background-color: #c0c0c1;
+}
+
+.zoom-background.in {
+  -webkit-animation: opacity-anim 0.3s ease-out;
+}
+
+.zoom-background.out {
+  -webkit-animation: opacity-anim-out 0.3s ease-out;
+}
+
+@-webkit-keyframes opacity-anim {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@-webkit-keyframes opacity-anim-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}

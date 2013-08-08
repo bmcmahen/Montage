@@ -1,0 +1,20 @@
+{
+  "name": "image_zoom",
+  "description": "top right playback indicator",
+  "dependencies": {
+    "bmcmahen/background-zoom": "*",
+    "component/classes": "*",
+    "component/dom": "*"
+  },
+  "development": {},
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ],
+  "styles": [
+    "index.styl"
+  ],
+  "local": [
+    "session"
+  ]
+}

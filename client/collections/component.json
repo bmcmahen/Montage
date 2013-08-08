@@ -1,0 +1,16 @@
+{
+  "name": "collections",
+  "description": "collections",
+  "dependencies": {
+  	"component/jquery": "*",
+    "bmcmahen/backbone": "*",
+    "component/underscore": "*",
+    "yields/store": "*"
+  },
+  "development": {},
+  "main": "movies.js",
+  "scripts": [
+    "movies.js",
+    "sources.js"
+  ]
+}

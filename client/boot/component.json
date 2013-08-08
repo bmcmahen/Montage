@@ -1,0 +1,42 @@
+{
+  "name": "boot",
+  "description": "bootstrap component",
+  "dependencies": {
+    "component/jquery" : "*",
+    "CamShaft/bootstrap-grid": "*",
+    "ftlabs/fastclick": "*",
+    "ianstormtaylor/reset": "*",
+    "bmcmahen/backbone": "*",
+    "component/dom" : "*"
+  },
+  "development": {},
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ],
+  "styles": [
+    "boot.styl",
+    "buttons.styl",
+    "icons.css",
+    "animations.styl",
+    "tabs.styl",
+    "utility.styl",
+    "fonts.styl",
+    "forms.styl",
+    "lists.styl"
+  ],
+  "local": [
+    "sockets",
+    "collections",
+    "controls",
+    "library",
+    "sources",
+    "drawer",
+    "movie",
+    "loading",
+    "modal",
+    "current_playback",
+    "session",
+    "image_zoom"
+  ]
+}

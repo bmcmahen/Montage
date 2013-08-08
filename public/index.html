@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0'/>
+  <meta name='apple-mobile-web-app-capable' content='yes' />
+  <link href='/app.css'rel='stylesheet' type='text/css'>
+</head>
+<body>
+  <div id='drawer'>
+    <ul>
+      <li class='search'>
+        <i class='icon-search'></i>
+        <div class='cancel'>
+          <button> Cancel </button>
+        </div>
+        <form>
+          <input type='search' placeholder='Search' autocorrect='off' autocapitalize='off' disabled='true'>
+        </form>
+      </li>
+      <div id='drawer-content' class='nonbounce'></div>
+      <div class='drawer-overlay'></div>
+    </ul>
+  </div>
+  <div class='contain' id='container'>
+      <div id='header' class='clearfix'>
+        <div class='navbar-controls'>
+          <div id='library-control'></div>
+        </div>
+        <a id='toggle-drawer'>
+          <span class='icon-bar'></span>
+          <span class='icon-bar'></span>
+          <span class='icon-bar'></span>
+        </a>
+        <div id='spinner'><i class='loader'></i></div>
+        <span class='main-title'>Movies</span>
+      </div>
+      <div id='body'></div>
+      <div id='footer' class='hidden'></div>
+      <div id='background-image'></div>
+  </div>
+  <div id='detail-modal' class='md-modal md-effect-1' tabindex='-1' role='dialog' aria-hidden='true'>
+  </div>
+  <div id='md-overlay' class='md-overlay md-effect-1'></div>
+
+
+
+  <script src='/app.js'></script>
+  <script> require('boot'); </script>
+
+
+
+
+</body>
+</html>

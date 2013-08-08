@@ -1,0 +1,17 @@
+if locals.original_poster_path
+	.images
+		i.icon-close
+		.img-container
+			if locals.is_phone
+				img(src=image_path + locals.original_poster_path, width='85', height='122')
+			else
+				img(src=image_path + locals.original_poster_path, width='130', height='195')
+	p.name=locals.title
+	if locals.runtime
+		p.meta=locals.runtime + ' Minutes'
+else
+	.image-placeholder.images
+		i.icon-close
+		.img-container
+			i.icon-question
+	p.name=locals.title || locals.file_name

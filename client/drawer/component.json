@@ -1,0 +1,30 @@
+{
+  "name": "drawer",
+  "description": "the drawer/navigation pane",
+  "dependencies": {
+    "component/jquery" : "*",
+    "bmcmahen/backbone" : "*",
+    "component/underscore" : "*",
+    "component/spin": "*",
+    "anthonyshort/emitter-manager": "*"
+  },
+  "development": {},
+  "main": "index.js",
+  "scripts": [
+    "index.js", "navigation.js", "search.js"
+  ],
+  "styles": [
+    "drawer.styl"
+  ],
+  "local": [
+    "session"
+  ],
+  "templates": [
+    "templates/navigation.jade",
+    "templates/list_item.jade",
+    "templates/search_result.jade",
+    "templates/torrent_result.jade",
+    "templates/torrent_results.jade",
+    "templates/local_results.jade"
+  ]
+}

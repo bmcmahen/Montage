@@ -1,0 +1,77 @@
+.center-text {
+	text-align: center;
+}
+
+.center {
+	margin: 0 auto;
+	display: block;
+}
+
+
+.hide {
+  display: none;
+}
+
+.show {
+  display: block;
+}
+
+.inline-block {
+	display: inline-block;
+}
+
+.loading .loader {
+	display: inline-block;
+}
+
+.loading {
+	text-align: center;
+}
+
+.loader {
+	display: none;
+	font-family: 'icomoon';
+	speak: none;
+	font-style: normal;
+	font-weight: normal;
+	font-variant: normal;
+	text-transform: none;
+	margin: 30px;
+	color: #888;
+	line-height: 1;
+	-webkit-font-smoothing: antialiased;
+	-webkit-animation: spin 2s infinite linear;
+}
+
+.loader.large {
+	font-size: 32px;
+}
+
+.loader.light {
+	color: #EBEBEB;
+	text-shadow: 1px 1px 20px rgba(0,0,0,0.2);
+}
+
+.loader:before {
+	content: "\e00a";
+}
+
+.loading-failure .loader:before {
+	content: "\e015";
+}
+
+.loading-failure .loader,
+.loading-success .loader {
+	-webkit-animation: none;
+	-webkit-animation: zoom .4s linear;
+}
+
+.loading-success .loader:before {
+	content: "\e012";
+}
+
+#spinner .loader {
+	margin: 2px;
+	margin-left: 0;
+	font-size: 1.9em;
+}

@@ -1,0 +1,6 @@
+public/movies
+components
+node_modules
+.DS_Store
+lib/database/databases/movies.db
+lib/database/databases/sources.db

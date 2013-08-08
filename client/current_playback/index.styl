@@ -1,0 +1,35 @@
+#currently-playing {
+	padding: 5px 8px;
+	background: #5cb85c;
+	color: white;
+	width: 120px;
+	margin: 7px;
+	position: absolute;
+	top: 0;
+	right: 0;
+	border-radius: 2px;
+	transform: translateX(200px);
+	transition: transform 0.4s ease-out;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	visibility: hidden;
+}
+
+#currently-playing:active {
+	background: #333;
+}
+
+#currently-playing.in {
+	visibility: visible;
+	transform: translateX(0);
+	transition: transform 0.4s ease-out;
+}
+
+#currently-playing .icon-play {
+	font-size: 17px;
+	margin-right: 0;
+	float: left;
+	display: block;
+	vertical-align: bottom;
+}

@@ -1,0 +1,14 @@
+{
+  "name": "rasputin",
+  "paths": [
+    "client"
+  ],
+  "local": [
+    "boot"
+  ],
+  "dependencies": {
+    "component/events": "*",
+    "bmcmahen/loading": "*",
+    "bmcmahen/progress": "*"
+  }
+}

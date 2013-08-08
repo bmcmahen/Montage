@@ -1,0 +1,13 @@
+{
+  "name": "sockets",
+  "description": "ddp connection to server",
+  "dependencies": {
+  	"component/emitter" : "*",
+  	"bmcmahen/ddp-browser-client" : "*"
+  },
+  "development": {},
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ]
+}

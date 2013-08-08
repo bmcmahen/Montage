@@ -1,0 +1,19 @@
+{
+  "name": "current_playback",
+  "description": "top right playback indicator",
+  "dependencies": {
+    "component/events": "1.0.4",
+    "component/dom" : "*"
+  },
+  "development": {},
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ],
+  "styles": [
+    "index.styl"
+  ],
+  "local": [
+    "session"
+  ]
+}

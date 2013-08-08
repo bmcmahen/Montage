@@ -1,0 +1,248 @@
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: rgb(76, 76, 83);
+}
+
+html {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+}
+
+
+* {
+  -webkit-text-size-adjust: none;             /* prevent webkit from resizing text to fit */
+  -webkit-tap-highlight-color: rgba(0,0,0,0); /* make transparent link selection, adjust last value opacity 0 to 1.0 */
+}
+
+:not(input,textarea) {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+}
+
+#header {
+  padding: 0 5px;
+  background: white;
+  background: -webkit-linear-gradient(#fff, #F7F7F7);
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid #bbb;
+  /*background: #37353a;*/
+  height: 45px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+input {
+  outline: none;
+}
+
+#header:after {
+  clear: left;
+}
+
+#header .btn {
+  -webkit-font-smoothing: antialiased;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 15px;
+  cursor: pointer;
+  margin: 8px;
+  padding: 6px 8px;
+  display: inline-block;
+}
+
+#header .btn:hover {
+  color: white;
+}
+
+#header .btn:active {
+  color: #2381bb;
+}
+
+#add-source,
+#sync-library {
+  float: right;
+}
+
+#toggle-drawer {
+  color: #eee;
+  width: 27px;
+  padding: 12px 15px 11px 15px;
+  display: inline-block;
+  position: absolute;
+  left: 0;
+  cursor: pointer;
+}
+
+#toggle-drawer:active {
+  background: rgba(0,0,0,0.10);
+}
+
+#body {
+  clear: both;
+  overflow: hidden;
+  position: absolute;
+  top: 45px;
+  width: 100%;
+  margin: 0;
+  -webkit-overflow-scrolling: touch;
+  -webkit-perspective: 1000;
+}
+
+span.icon-bar {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  height: 2px;
+  background-color: #979797;
+  border-radius: 1px;
+}
+
+
+span.main-title {
+  font-size: 17px;
+  font-family: 'helvetica neue';
+  line-height: 45px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+  color: rgb(107, 107, 107);
+}
+
+#spinner {
+  height: 45px;
+  width: 45px;
+  padding: 10px 0;
+  left: 60px;
+  position: absolute;
+  box-sizing: border-box;
+  display: inline-block;
+}
+
+.navbar-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.md-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 60%;
+    max-width: 530px;
+    min-width: 320px;
+    height: auto;
+    z-index: 2000;
+    visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateX(-50%) translateY(-50%);
+}
+
+.md-show {
+    visibility: visible;
+}
+
+.md-overlay {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    visibility: hidden;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    opacity: 0;
+    background: rgba(43, 43, 43, 0.87);
+    transition: all 0.4s;
+}
+
+.md-overlay.in {
+  opacity: 1;
+  visibility: visible;
+}
+
+.md-effect-1 .md-content {
+  transform: translateY(200%);
+  transition: all 0.4s;
+  border-radius: 2px;
+}
+
+.md-show.md-effect-1 .md-content {
+  transform: translateY(0);
+}
+
+.md-content {
+  background: rgba(255, 255, 255, 0.97);
+}
+
+.md-content h3 {
+  margin: 0;
+  padding: 1.4em;
+  display: block;
+  opacity: 1;
+  font-family: 'helvetica neue';
+  text-align: center;
+  background: #7A466B;
+  font-weight: 600;
+  color: white;
+  border-radius: 0;
+}
+
+.md-body {
+  padding: 15px;
+  min-height: 100px;
+  box-sizing: border-box;
+}
+
+.md-body label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+}
+
+.md-footer button.btn {
+  margin: 0 !important;
+  padding: 20px;
+  width: 50%;
+  font-size: 1.3em;
+  display: inline-block;
+  border-radius: 0;
+  box-sizing: border-box;
+  -webkit-user-select: none;
+}
+
+.md-footer button.btn.dismiss {
+  background: rgb(228, 228, 228);
+}
+
+.md-body form input {
+  outline: none;
+  border: 3px solid #ddd;
+  box-sizing: border-box;
+  font-size: 15px;
+  width: 100%;
+  margin-top: 3px;
+  padding: 20px 10px;
+  display: block;
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-appearance: none;
+}
+
+#library-control {
+  color: white;
+  cursor: pointer;
+}
+
+i {
+  font-size: 32px;
+}

@@ -1,0 +1,33 @@
+{
+  "name": "application-name",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "3.1.2",
+    "nedb": "*",
+    "underscore": "*",
+    "minimatch": "*",
+    "moviedb": "~0.1.0",
+    "ws": "*",
+    "range-parser": "0.0.4",
+    "mime": "~1.2.9",
+    "hat": "0.0.3",
+    "itty-bitty-torrent": "0.0.5",
+    "qs": "~0.6.5",
+    "request": "~2.22.0",
+    "q": "~0.9.6",
+    "gm": "~1.11.0",
+    "limiter": "~1.0.4"
+  },
+  "devDependencies": {
+    "css-whitespace": "~1.1.0",
+    "rework-mixins": "~1.1.1",
+    "component-builder": "*",
+    "component-jade": "*",
+    "rework": "*",
+    "node-watch": "~0.3.4"
+  }
+}

@@ -1,0 +1,108 @@
+ul.list-group {
+	padding-left: 0;
+	max-width: 400px;
+	overflow: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.list-group-item {
+	position: relative;
+	display: block;
+	padding: 0;
+	margin-bottom: -1px;
+	font-size: 14px;
+	line-height: 1.4em;
+	color: #333;
+	background-color: #ffffff;
+	border: 1px solid #B6B6B6;
+	text-align: left;
+	cursor: pointer;
+}
+
+.list-group-item a {
+	padding: 10px 30px 10px 15px;
+	display: block;
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+	-webkit-user-select: none;
+	overflow-x: hidden;
+	text-overflow: ellipsis;
+}
+
+
+
+.list-group-item a:active,
+.list-group-item a.active {
+	background-color: #79A6CC;
+	color: white;
+}
+
+.list-group-item a:active i,
+.list-group-item a.active i {
+	color: white;
+}
+
+.list-group-item a:hover {
+	text-decoration: none;
+}
+
+.list-group-item.transparent {
+	background: none;
+	border: none;
+	border-radius: 0;
+}
+
+.list-group-item:first-child {
+	border-top-right-radius: 4px;
+	border-top-left-radius: 4px;
+}
+
+.list-group-item:last-child {
+	margin-bottom: 0;
+	border-bottom-right-radius: 4px;
+	border-bottom-left-radius: 4px;
+}
+
+.list-group-item.icon-left i.loader,
+.list-group-item i.pull-right{
+	position: absolute;
+	right: 12px;
+	top: 12px;
+	left: auto;
+	color: #666;
+	font-size: 16px;
+	margin: 0;
+}
+
+.list-group-item span {
+	margin-left: 3px;
+	width: 100%;
+	white-space: nowrap;
+}
+
+.list-group-item.icon-left span {
+	margin-left: 25px;
+}
+
+.list-group-item.icon-left i {
+	position: absolute;
+	left: 12px;
+	line-height: 0.9em;
+	top: 12px;
+	color: #666;
+	font-size: 16px;
+	margin: 0;
+}
+
+.list-group-item.loading {
+	text-align: left;
+}
+
+.list-group-item.loading .icon-checkmark {
+	display: none;
+}
+
+.list-group-item:hover .icon-checkmark {
+	color: #333;
+}

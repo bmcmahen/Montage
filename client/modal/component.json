@@ -1,0 +1,19 @@
+{
+  "name": "modal",
+  "description": "control the modal dialog",
+  "dependencies": {
+    "component/jquery" : "*",
+    "bmcmahen/backbone" : "*",
+    "component/underscore" : "*"
+  },
+  "development": {},
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ],
+  "local": ["session"],
+  "templates" : [
+    "templates/torrent.jade",
+    "templates/network.jade"
+  ]
+}

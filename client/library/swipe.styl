@@ -1,0 +1,105 @@
+ul.swipe-wrapper {
+	width: 100%;
+	height: 100%;
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
+	box-sizing: border-box;
+}
+
+li.swipe-item {
+	list-style-type: none;
+	display: block;
+	float: left;
+	position: relative;
+}
+
+li.swipe-item.hidden {
+	visibility: hidden;
+}
+
+
+.alphabet-wrapper {
+	position: absolute;
+	bottom: 0;
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
+	width: 100%;
+	text-align: center;
+}
+
+.alphabet-wrapper:active {
+	background: rgba(0,0,0,0.05);
+}
+
+#hover-letter {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	margin-left: -40px;
+	margin-top: -52px;
+	background: rgba(0,0,0,0.8);
+	color: white;
+	padding: 25px 0;
+	width: 80px;
+	text-align: center;
+	font-size: 50px;
+	display: none;
+	z-index: 1000;
+}
+
+#hover-letter.in {
+	display: block;
+}
+
+ul.alphabet:after {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	content: '';
+	cursor: pointer;
+}
+
+ul.alphabet {
+	display: inline-block;
+	padding-left: 0;
+	position: relative;
+	cursor: pointer;
+}
+
+
+ul.alphabet li {
+	display: inline-block;
+	width: 20px;
+	height: 30px;
+}
+
+.letter {
+	display: inline-block;
+	line-height: 30px;
+	font-size: 13px;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	color: #666;
+	width: 100%;
+	height: 100%;
+	cursor: default;
+}
+
+
+#swipe-container {
+  clear: both;
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}

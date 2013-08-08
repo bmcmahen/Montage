@@ -1,0 +1,42 @@
+{
+  "name": "library",
+  "description": "movie library",
+  "dependencies": {
+    "component/emitter": "*",
+    "component/jquery": "*",
+    "bmcmahen/backbone": "*",
+    "component/underscore": "*",
+    "component/onload": "*",
+    "component/translate": "*",
+    "component/orientation-listener": "*",
+    "yields/is-touch" : "*",
+    "component/events" : "1.0.4",
+    "matthewmueller/debounce": "*",
+    "component/swipe": "*",
+    "anthonyshort/emitter-manager": "*",
+    "bmcmahen/progress": "*",
+    "component/hammer.js": "*",
+    "component/event": "*",
+    "bmcmahen/background-zoom": "*"
+  },
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": [
+    "index.js",
+    "alphabet.js",
+    "chunks.js"
+  ],
+  "styles": [
+    "index.styl",
+    "swipe.styl"
+  ],
+  "local": [
+    "sockets",
+    "session"
+  ],
+  "templates": [
+    "templates/movie.jade",
+    "templates/library.jade",
+    "templates/sort.jade"
+  ]
+}

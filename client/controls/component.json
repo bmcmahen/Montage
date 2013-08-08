@@ -1,0 +1,17 @@
+{
+  "name": "controls",
+  "description": "the controls pane",
+  "dependencies": {
+    "component/jquery" : "*",
+    "bmcmahen/backbone" : "*",
+    "component/underscore" : "*"
+  },
+  "development": {},
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ],
+  "styles": [
+    "index.styl"
+  ]
+}

@@ -1,0 +1,19 @@
+#movie-content
+	.container-fluid.movie-container
+		.row-fluid
+			.span3.player.offset2
+				#poster-image
+				a.control.back(href='#')
+					i.icon-backward.icon-large
+				a.control.play(href='#')
+					i.icon-play.icon-2x
+				a.control.forward(href='#')
+					i.icon-forward.icon-large
+			.span5.movie-info
+				h3=locals.original_title
+				p
+					span=locals.release_date + ', '
+					span=locals.runtime + ' Minutes.'
+				p=locals.overview
+a.more(href='#')
+	i.icon-close.icon2x

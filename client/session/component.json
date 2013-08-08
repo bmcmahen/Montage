@@ -1,0 +1,15 @@
+{
+  "name": "session",
+  "description": "session variables",
+  "dependencies": {
+    "yields/store": "*",
+    "component/each": "*",
+    "component/emitter": "*",
+    "bmcmahen/session-variables": "*"
+  },
+  "development": {},
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ]
+}

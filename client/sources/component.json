@@ -1,0 +1,38 @@
+{
+  "name": "sources",
+  "description": "select a source for your library",
+  "dependencies": {
+    "component/underscore": "*",
+    "component/dom": "*",
+    "component/events": "1.0.4",
+    "component/emitter": "*",
+    "anthonyshort/emitter-manager": "*",
+    "component/inherit": "*",
+    "bmcmahen/loading": "*"
+  },
+  "development": {
+  },
+  "main": "index.js",
+  "scripts": [
+    "index.js",
+    "add-source.js",
+    "remove-source.js",
+    "network-source.js",
+    "listing.js"
+  ],
+  "styles": [
+    "sources.styl"
+  ],
+  "local": [
+   "sockets",
+   "collections"
+  ],
+  "templates": [
+    "templates/browser-tabs.html",
+    "templates/add-source.html",
+    "templates/list-item.jade",
+    "templates/list-item-remove.jade",
+    "templates/remove-source.html",
+    "templates/network-source.html"
+  ]
+}

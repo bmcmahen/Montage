@@ -1,0 +1,12 @@
+li.list-group-item.icon-left
+	case type
+		when 'directory'
+			a.folder(href='#')
+				span=name
+				i.icon-file
+				i.loader
+		when 'file'
+			a.file(href='#')
+				span=name
+				i.icon-file
+				i.loader

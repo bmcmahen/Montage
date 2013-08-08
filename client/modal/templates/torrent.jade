@@ -1,0 +1,20 @@
+.md-content
+	h3 Download Torrent
+	div.md-body
+		p Title:
+			span !{locals.title}
+		p Leachers:
+			span=locals.leachers
+		p Seeds:
+			span=locals.seeds
+		p Size:
+			span=locals.size
+		div
+			if locals.sources
+				p Download Location
+				select
+					each source in locals.sources
+						option=source.path
+	div.md-footer.clearfix
+		button.md-close.btn.dismiss Cancel
+		button.md-download.btn.primary Download
