@@ -1,3 +1,8 @@
-Flicks is an experimental home media center for the Raspberry Pi. The concept: Flicks, installed on your Raspberry pi, will expose an API that allows you to organize your video library and control playback of your videos from other devices, like your tablet or phone. You can choose to play the video on your raspberry pi, or on your tablet/phone.
+Montage is an experimental home media center developeed with the Raspberry Pi in mind. It is very much a __work in progress__ and is bound to explode at any moment. The goal is to create an xmbc-like media player that is controlled entirely through a web interface on your mobile device. This is also an experimentation with building a web application entirely in HTML5 and Javascript.
 
-This is very much a __work in progress__ and is highly experimental. It requires the node 0.11.3 running with the `--harmony-generators` flag. The goal is to eventually package this into something that's easy to install and use.
+It currently requires Node > 0.10 and GraphicsMagick.
+
+Primary target platform right now are tablets, namely the iPad (which I can test with).
+
+![ScreenShot](https://s3.amazonaws.com/ben_random_images/montage1.jpg)
+![ScreenShot](https://s3.amazonaws.com/ben_random_images/montage2.jpg)
