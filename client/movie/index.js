@@ -8,6 +8,7 @@ var bind = require('event');
 var loading = require('loading');
 var EmitterManager = require('emitter-manager');
 var onload = require('onload');
+var fullscreen = require('fullscreen');
 
 /////////////////////////////////
 // Adapt Reactive to Backbone  //
@@ -120,6 +121,7 @@ function MovieView(movie){
 	this.model = movie;
 	this.$el = dom(require('./templates/playback.html'));
 	this.playbackDevice = 'local';
+	this.isPlaying = false;
 }
 
 
@@ -131,14 +133,19 @@ MovieView.prototype.render = function(){
 MovieView.prototype.setPlaybackDevice = function(){
 	var selected = this.$el.find('select').value();
 	this.playbackDevice = selected;
+	this.model.trigger('change:isLocal');
 }
 
 MovieView.prototype.rewind = function(e){
 	e.preventDefault();
-	console.log('rewind');
-	ddp.call('backwardVideo', this.model.toJSON(), function(err, res){
-		console.log(err, res);
-	});
+	if (this.playbackDevice === 'local'){
+		if (!this.video) return;
+		this.video.currentTime = this.video.currentTime - 30;
+	} else {
+		ddp.call('backwardVideo', this.model.toJSON(), function(err, res){
+			console.log(err, res);
+		});
+	}
 };
 
 MovieView.prototype.image_url = function(){
@@ -148,20 +155,68 @@ MovieView.prototype.image_url = function(){
 
 MovieView.prototype.forward = function(e){
 	e.preventDefault();
-	ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
-		console.log('froward result.')
-	});
+	if (this.playbackDevice === 'local'){
+		if (!this.video) return;
+		this.video.currentTime = this.video.currentTime + 30;
+	} else {
+		ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
+			console.log('froward result.')
+		});
+	}
 	console.log('forward')
 };
 
-MovieView.prototype.playbackLocal = function(){
-	var video = dom('<video></video>');
-	video.src('/videos/'+ this.model.id);
-	this.$el
-		.find('#main-playback')
-		.empty()
-		.append(video);
+MovieView.prototype.isPlaying = function(){
+	return this.isPlaying;
 }
+
+MovieView.prototype.isLocal = function(){
+	return this.playbackDevice === 'local';
+};
+
+MovieView.prototype.playbackLocal = function(){
+	if (!this.isPlaying){
+		if (!this.video){
+			var $video = dom('<video></video>');
+			var src = this.model.get('torrent')
+				? '/stream/'
+				: '/videos/';
+
+			$video.src(src + this.model.id);
+			this.$el
+				.find('#main-playback')
+				.empty()
+				.append($video);
+			this.video = $video.get();
+			this.videoEvents = events(this.video, this);
+			this.videoEvents.bind('pause', 'onpause');
+			this.videoEvents.bind('error', 'onpause');
+			this.videoEvents.bind('ended', 'onpause');
+		}
+		this.isPlaying = true;
+		this.model.trigger('change:isPlaying', true);
+		this.video.play();
+	} else {
+		this.isPlaying = false;
+		this.model.trigger('change:isPlaying', false);
+		this.video.pause();
+	}
+};
+
+
+MovieView.prototype.onpause = function(){
+	this.isPlaying = false;
+	this.model.trigger('change:isPlaying');
+};
+
+MovieView.prototype.toggleFullscreen = function(e){
+	if (this.video) {
+		if (this.video.webkitEnterFullscreen)
+			this.video.webkitEnterFullscreen();
+		else
+			fullscreen(this.video);
+	}
+};
 
 MovieView.prototype.play = function(e){
 	e.preventDefault();
@@ -183,6 +238,11 @@ MovieView.prototype.play = function(e){
 		this.model.set('isPlaying', true);
 		Session.set('current_playback', this.model);
 	}
+};
+
+MovieView.prototype.close = function(){
+	this.$el.remove();
+	if (this.videoEvents) this.videoEvents.unbind();
 };
 
 //////////////////////
@@ -258,7 +318,7 @@ function SearchResult(model, json){
   	});
   };
 
-  bind.bind($el, 'click', selectThis);
+  bind.bind($el.get(), 'click', selectThis);
 
   return {
     $el: $el,

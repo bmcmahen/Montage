@@ -21709,6 +21709,89 @@ exports.get = function(obj, prop) {
 };
 
 });
+require.register("component-fullscreen/index.js", function(exports, require, module){
+
+/**
+ * Module dependencies.
+ */
+
+var Emitter = require('emitter');
+
+/**
+ * Expose `fullscreen()`.
+ */
+
+exports = module.exports = fullscreen;
+
+/**
+ * Mixin emitter.
+ */
+
+Emitter(exports);
+
+/**
+ * document element.
+ */
+
+var element = document.documentElement;
+
+/**
+ * fullscreen supported flag.
+ */
+
+exports.supported = !!(element.requestFullscreen
+  || element.webkitRequestFullscreen
+  || element.mozRequestFullScreen);
+
+/**
+ * Enter fullscreen mode for `el`.
+ *
+ * @param {Element} [el]
+ * @api public
+ */
+
+function fullscreen(el){
+  el = el || element;
+  if (el.requestFullscreen) return el.requestFullscreen();
+  if (el.mozRequestFullScreen) return el.mozRequestFullScreen();
+  if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
+}
+
+/**
+ * Exit fullscreen.
+ *
+ * @api public
+ */
+
+exports.exit = function(){
+  var doc = document;
+  if (doc.exitFullscreen) return doc.exitFullscreen();
+  if (doc.mozCancelFullScreen) return doc.mozCancelFullScreen();
+  if (doc.webkitCancelFullScreen) return doc.webkitCancelFullScreen();
+};
+
+/**
+ * Change handler function.
+ */
+
+function change(prop) {
+  return function(){
+    var val = document[prop];
+    exports.emit('change', val);
+  }
+}
+
+/**
+ * Handle events.
+ */
+
+if (document.addEventListener) {
+  document.addEventListener('fullscreenchange', change('fullscreen'));
+  document.addEventListener('mozfullscreenchange', change('mozFullScreen'));
+  document.addEventListener('webkitfullscreenchange', change('webkitIsFullScreen'));
+}
+
+});
 require.register("movie/index.js", function(exports, require, module){
 var Session = require('../session');
 var ddp = require('../sockets').ddp;
@@ -21720,6 +21803,7 @@ var bind = require('event');
 var loading = require('loading');
 var EmitterManager = require('emitter-manager');
 var onload = require('onload');
+var fullscreen = require('fullscreen');
 
 /////////////////////////////////
 // Adapt Reactive to Backbone  //
@@ -21832,6 +21916,7 @@ function MovieView(movie){
 	this.model = movie;
 	this.$el = dom(require('./templates/playback.html'));
 	this.playbackDevice = 'local';
+	this.isPlaying = false;
 }
 
 
@@ -21843,14 +21928,19 @@ MovieView.prototype.render = function(){
 MovieView.prototype.setPlaybackDevice = function(){
 	var selected = this.$el.find('select').value();
 	this.playbackDevice = selected;
+	this.model.trigger('change:isLocal');
 }
 
 MovieView.prototype.rewind = function(e){
 	e.preventDefault();
-	console.log('rewind');
-	ddp.call('backwardVideo', this.model.toJSON(), function(err, res){
-		console.log(err, res);
-	});
+	if (this.playbackDevice === 'local'){
+		if (!this.video) return;
+		this.video.currentTime = this.video.currentTime - 30;
+	} else {
+		ddp.call('backwardVideo', this.model.toJSON(), function(err, res){
+			console.log(err, res);
+		});
+	}
 };
 
 MovieView.prototype.image_url = function(){
@@ -21860,20 +21950,68 @@ MovieView.prototype.image_url = function(){
 
 MovieView.prototype.forward = function(e){
 	e.preventDefault();
-	ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
-		console.log('froward result.')
-	});
+	if (this.playbackDevice === 'local'){
+		if (!this.video) return;
+		this.video.currentTime = this.video.currentTime + 30;
+	} else {
+		ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
+			console.log('froward result.')
+		});
+	}
 	console.log('forward')
 };
 
-MovieView.prototype.playbackLocal = function(){
-	var video = dom('<video></video>');
-	video.src('/videos/'+ this.model.id);
-	this.$el
-		.find('#main-playback')
-		.empty()
-		.append(video);
+MovieView.prototype.isPlaying = function(){
+	return this.isPlaying;
 }
+
+MovieView.prototype.isLocal = function(){
+	return this.playbackDevice === 'local';
+};
+
+MovieView.prototype.playbackLocal = function(){
+	if (!this.isPlaying){
+		if (!this.video){
+			var $video = dom('<video></video>');
+			var src = this.model.get('torrent')
+				? '/stream/'
+				: '/videos/';
+
+			$video.src(src + this.model.id);
+			this.$el
+				.find('#main-playback')
+				.empty()
+				.append($video);
+			this.video = $video.get();
+			this.videoEvents = events(this.video, this);
+			this.videoEvents.bind('pause', 'onpause');
+			this.videoEvents.bind('error', 'onpause');
+			this.videoEvents.bind('ended', 'onpause');
+		}
+		this.isPlaying = true;
+		this.model.trigger('change:isPlaying', true);
+		this.video.play();
+	} else {
+		this.isPlaying = false;
+		this.model.trigger('change:isPlaying', false);
+		this.video.pause();
+	}
+};
+
+
+MovieView.prototype.onpause = function(){
+	this.isPlaying = false;
+	this.model.trigger('change:isPlaying');
+};
+
+MovieView.prototype.toggleFullscreen = function(e){
+	if (this.video) {
+		if (this.video.webkitEnterFullscreen)
+			this.video.webkitEnterFullscreen();
+		else
+			fullscreen(this.video);
+	}
+};
 
 MovieView.prototype.play = function(e){
 	e.preventDefault();
@@ -21895,6 +22033,11 @@ MovieView.prototype.play = function(e){
 		this.model.set('isPlaying', true);
 		Session.set('current_playback', this.model);
 	}
+};
+
+MovieView.prototype.close = function(){
+	this.$el.remove();
+	if (this.videoEvents) this.videoEvents.unbind();
 };
 
 //////////////////////
@@ -21970,7 +22113,7 @@ function SearchResult(model, json){
   	});
   };
 
-  bind.bind($el, 'click', selectThis);
+  bind.bind($el.get(), 'click', selectThis);
 
   return {
     $el: $el,
@@ -22753,8 +22896,9 @@ module.exports = 'li.label\n	span Movies';
 });
 
 
+
 require.register("movie/templates/playback.html", function(exports, require, module){
-module.exports = '<div>\n\n	<div id=\'main-playback\' class=\'segment clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n			<p data-show=\'release_date\' class=\'meta release-date\'>  {release_date} </p>\n			<p data-show=\'runtime\' class=\'meta\'> {runtime + \' Minutes\'} </p>\n			<p data-show=\'budget\' class=\'meta\'> {\'$\' + budget} </p>\n			<p data-show=\'plot\'> {plot} </p>\n		</div>\n	</div>\n\n	<div class=\'segment\'>\n		<div id=\'toggle\'>\n			<select on-change=\'setPlaybackDevice\'>\n				<option value=\'local\'>This Device</option>\n				<option value=\'remote\'>Television</option>\n			</select>\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-stop-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n	</div>\n\n</div>\n\n\n';
+module.exports = '<div>\n\n	<div id=\'main-playback\' class=\'segment clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n			<p data-show=\'release_date\' class=\'meta release-date\'>  {release_date} </p>\n			<p data-show=\'runtime\' class=\'meta\'> {runtime + \' Minutes\'} </p>\n			<p data-show=\'budget\' class=\'meta\'> {\'$\' + budget} </p>\n			<p data-show=\'plot\'> {plot} </p>\n		</div>\n	</div>\n\n	<div class=\'segment\'>\n		<div id=\'toggle\'>\n			<select on-change=\'setPlaybackDevice\'>\n				<option value=\'local\'>This Device</option>\n				<option value=\'remote\'>Television</option>\n			</select>\n					<button class=\'btn primary\' data-show=\'isLocal\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
 module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
@@ -23334,6 +23478,10 @@ require.alias("component-matches-selector/index.js", "yields-traverse/deps/match
 require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
 
 require.alias("yields-traverse/index.js", "yields-traverse/index.js");
+require.alias("component-fullscreen/index.js", "movie/deps/fullscreen/index.js");
+require.alias("component-emitter/index.js", "component-fullscreen/deps/emitter/index.js");
+require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
+
 require.alias("movie/index.js", "movie/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");

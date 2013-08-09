@@ -8,7 +8,8 @@
     "component/event": "*",
     "bmcmahen/loading": "*",
     "anthonyshort/emitter-manager": "*",
-    "component/dom": "*"
+    "component/dom": "*",
+    "component/fullscreen": "1.0.0"
   },
   "license": "MIT",
   "main": "index.js",

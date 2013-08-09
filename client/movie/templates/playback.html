@@ -21,6 +21,7 @@
 				<option value='local'>This Device</option>
 				<option value='remote'>Television</option>
 			</select>
+					<button class='btn primary' data-show='isLocal' on-click='toggleFullscreen'> Fullscreen </button>
 		</div>
 		<div class='controls'>
 			<a class='control back' href='#' on-click='rewind'>
@@ -28,7 +29,7 @@
 			</a>
 			<a class='control play' href='#' on-click='play'>
 				<i class='icon-play-2' data-hide='isPlaying'></i>
-				<i class='icon-stop-2' data-show='isPlaying'></i>
+				<i class='icon-pause-2' data-show='isPlaying'></i>
 			</a>
 			<a class='control forward' href='#' on-click='forward'>
 				<i class='icon-forward-2'></i>
