@@ -2,7 +2,8 @@
 var express = require('express')
   , app = express()
   , path = require('path')
-  , http = require('http');
+  , http = require('http')
+  , address = require('network-address');
 
 // Create our server
 var server = http.createServer(app);

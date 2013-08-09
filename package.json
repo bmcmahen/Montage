@@ -1,5 +1,5 @@
 {
-  "name": "moviola",
+  "name": "fiddleware-montage",
   "version": "0.0.1",
   "scripts": {
     "start": "node app.js"
@@ -19,7 +19,8 @@
     "request": "~2.22.0",
     "q": "~0.9.6",
     "gm": "~1.11.0",
-    "limiter": "~1.0.4"
+    "limiter": "~1.0.4",
+    "network-address": "0.0.4"
   },
   "devDependencies": {
     "css-whitespace": "~1.1.0",

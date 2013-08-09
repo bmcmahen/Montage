@@ -1,6 +1,7 @@
 public/movies
 components
 node_modules
+network_mounts
 .DS_Store
 lib/database/databases/movies.db
 lib/database/databases/sources.db

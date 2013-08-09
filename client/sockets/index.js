@@ -2,7 +2,7 @@ var Emitter = require('emitter');
 var DDP = require('ddp-browser-client');
 
 // Create our Socket Connection
-var ws = new WebSocket('ws://192.168.0.50:3000');
+var ws = new WebSocket('ws://'+ location.host);
 
 // Create our DDP Connection
 var ddp = new DDP(ws).connect();
