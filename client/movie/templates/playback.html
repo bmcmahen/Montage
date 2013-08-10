@@ -1,6 +1,13 @@
 <div>
-
-	<div id='main-playback' class='segment clearfix'>
+	<div id='toggle' class='segment'>
+		<div class='toggle'>
+			<label class='toggle-on-label'>Pi</label>
+			<input class='toggle-checkbox' type='checkbox'>
+			<div class='toggle-button'></div>
+			<label class='toggle-off-label'>iOS</label>
+		</div>
+	</div>
+	<div id='main-playback' class='segment clearfix white clearfix'>
 		<div class='poster'>
 			<div id='poster-image'>
 				<img data-src='image_url < poster'></img>
@@ -8,33 +15,33 @@
 		</div>
 		<div class='movie-info'>
 			<h2> { title || file_name }</h2>
-			<p data-show='release_date' class='meta release-date'>  {release_date} </p>
-			<p data-show='runtime' class='meta'> {runtime + ' Minutes'} </p>
-			<p data-show='budget' class='meta'> {'$' + budget} </p>
-			<p data-show='plot'> {plot} </p>
 		</div>
 	</div>
 
-	<div class='segment'>
-		<div id='toggle'>
-			<select on-change='setPlaybackDevice'>
-				<option value='local'>This Device</option>
-				<option value='remote'>Television</option>
-			</select>
-					<button class='btn primary' data-show='isLocal' on-click='toggleFullscreen'> Fullscreen </button>
+	<div class='segment white clearfix'>
+		<div class='controls pre'>
+			<button class='btn transparent' data-hide='isPi' disable-if='notPlaying < isPlaying' on-click='toggleFullscreen'> Fullscreen </button>
+			<button class='btn transparent' data-show='isPi' disable-if='notPlaying < isPlaying' on-click='toggleSubtitles'> Subtitles </button>
+
 		</div>
 		<div class='controls'>
-			<a class='control back' href='#' on-click='rewind'>
+			<a class='control back' href='#' disable-if='notPlaying <isPlaying' on-click='rewind'>
 				<i class='icon-backward-2'></i>
 			</a>
 			<a class='control play' href='#' on-click='play'>
 				<i class='icon-play-2' data-hide='isPlaying'></i>
 				<i class='icon-pause-2' data-show='isPlaying'></i>
 			</a>
-			<a class='control forward' href='#' on-click='forward'>
+			<a class='control forward' href='#' disable-if='notPlaying < isPlaying' on-click='forward'>
 				<i class='icon-forward-2'></i>
 			</a>
 		</div>
+		<div class='controls post'>
+			<button class='btn transparent' disable-if='notPlaying < isPlaying' on-click='volumeUp'><i class='icon-volume-high'></i></button>
+			<button class='btn transparent' disable-if='notPlaying < isPlaying' on-click='volumeDown'><i class='icon-volume-low'></i></button>
+		</div>
+
+
 	</div>
 
 </div>

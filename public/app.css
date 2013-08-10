@@ -1830,6 +1830,95 @@ a.torrent i {
 
 
 
+
+
+
+/**
+ * Toggle.
+ *
+ *   div.toggle
+ *     label.toggle-on-label
+ *     input[type="checkbox"].toggle-checkbox
+ *     label.toggle-off-label
+ *
+ * The toggle's height is always relative to the font-size, so if you want to
+ * change the height you can easily without worrying about everything else.
+ */
+
+.toggle {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  height: 1em;
+  width: 2.5em; /* default, but changeable */
+  cursor: pointer;
+}
+
+.toggle-on-label,
+.toggle-checkbox,
+.toggle-off-label {
+  pointer-events: none;
+}
+
+.toggle-checkbox {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1em;
+  width: 1em;
+  background: transparent;
+  border: none;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  -webkit-transition: left .2s ease-in, margin .2s ease-in;
+          transition: left .2s ease-in, margin .2s ease-in;
+}
+
+.toggle-on-label,
+.toggle-off-label {
+  position: absolute;
+  height: 1em;
+  line-height: 1em;
+  text-align: center;
+  -webkit-transition: -webkit-transform .2s ease-in;
+          transition:         transform .2s ease-in;
+}
+
+.toggle-on-label {
+  right: 1em; /* account for 1em toggle */
+  left: 0;
+}
+
+.toggle-off-label {
+  right: 0;
+  left: 1em; /* account for 1em toggle */
+}
+
+
+/**
+ * On.
+ */
+
+.toggle.on .toggle-checkbox {
+  margin-left: -1em;
+  left: 100%;
+}
+
+.toggle.on .toggle-off-label {
+  -webkit-transform: translateX(100%);
+          transform: translateX(100%);
+}
+
+
+/**
+ * Off.
+ */
+
+.toggle.off .toggle-on-label {
+  -webkit-transform: translateX(-100%);
+          transform: translateX(-100%);
+}
 .fade-in {
   -ms-animation-duration: .3s;
   -moz-animation-duration: .3s;
@@ -2043,10 +2132,13 @@ a.control {
   text-decoration: none;
   color: #79A6CC;
   display: inline-block;
-  margin: 17px;
-  border: 1px solid;
+  margin: 7px;
   vertical-align: middle;
   text-shadow: 0 1px 1px rgba(255, 255, 255, 0.44);
+  -ms-transition: opacity 0.3s ease-out;
+  -moz-transition: opacity 0.3s ease-out;
+  -webkit-transition: opacity 0.3s ease-out;
+  transition: opacity 0.3s ease-out;
 }
 
 a.control i:active {
@@ -2062,12 +2154,24 @@ a.control:active {
   background: #bbb;
 }
 
+a.control.play .icon-pause-2.show {
+  margin-left: -3px;
+  margin-right: 3px;
+  padding-left: 0px;
+}
+
+a.control.disabled {
+  pointer-events: none;
+  opacity: 0.2;
+  -ms-filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=20);
+  filter: alpha(opacity=20);
+}
+
 a.control.play {
   text-align: center;
   margin-right: 8px;
   margin-left: 8px;
   padding: 6px 2px 6px 10px;
-  background: white;
   -ms-border-radius: 50%;
   -moz-border-radius: 50%;
   -webkit-border-radius: 50%;
@@ -2083,7 +2187,6 @@ a.control.play i {
 }
 
 a.control.forward {
-  background: white;
   font-size: 40px;
   padding: 6px 5px 6px 10px;
   -ms-border-radius: 50%;
@@ -2093,7 +2196,6 @@ a.control.forward {
 }
 
 a.control.back {
-  background: white;
   font-size: 25px;
   padding: 6px 10px 6px 5px;
   -ms-border-radius: 50%;
@@ -2116,9 +2218,36 @@ a.control.back i {
   box-shadow: 0 0 30px rgba(255, 255, 255, 0.9);
 }
 
+.controls.pre,
+.controls.post {
+  width: 30%;
+  padding: 18px 0 0 0;
+}
+
+.controls.post {
+  text-align: right;
+}
+
+.controls.pre {
+  text-align: left;
+}
+
 .controls {
-  margin-top: 20px;
   text-align: center;
+  float: left;
+  width: 40%;
+  -ms-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.controls button {
+  display: inline-block;
+}
+
+.controls button.hide {
+  display: none;
 }
 
 .source {
@@ -2284,21 +2413,13 @@ h3 {
   /*  background: rgba(177, 173, 184, 0.93);
 */
   text-shadow: 0 1px 0 rgba(252, 252, 252, 0.48);
-  color: rgb(14, 14, 14);
-  background: white;
-  padding: 20px;
-  margin-left: 10px;
-  width: 68%;
+  color: rgba(255, 255, 255, 1);
+  margin: 0 auto;
   /*margin: 0 auto;*/
   /*display: block;*/
   vertical-align: top;
   /*margin: 20px;*/
-  float: left;
   /*padding: 10px 10px 0 5px;*/
-  min-height: 200px;
-  height: 243px;
-  overflow: auto;
-  -webkit-overflow: touch;
   /*display: none;*/
   -ms-box-sizing: border-box;
   -moz-box-sizing: border-box;
@@ -2313,19 +2434,22 @@ h3 {
 .movie-detail .segment {
   position: relative;
   padding: 5px;
+  -ms-transition: all 0.4s ease-out;
+  -moz-transition: all 0.4s ease-out;
+  -webkit-transition: all 0.4s ease-out;
+  transition: all 0.4s ease-out;
+}
+
+.movie-detail .segment.white {
+  background: rgba(255, 255, 255, 0.95);
 }
 
 #footer .poster {
   width: 30%;
   padding: 10px;
-  background: rgb(255, 255, 255);
   margin: 0 auto;
-  float: left;
+  margin-top: 10px;
   min-height: 240px;
-  -ms-border-radius: 2px;
-  -moz-border-radius: 2px;
-  -webkit-border-radius: 2px;
-  border-radius: 2px;
   -ms-box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -2334,10 +2458,6 @@ h3 {
 
 #footer .poster img {
   border: 1px solid #bbb;
-  -ms-border-radius: 2px;
-  -moz-border-radius: 2px;
-  -webkit-border-radius: 2px;
-  border-radius: 2px;
 }
 
 #footer .tab-content {
@@ -2397,6 +2517,17 @@ a.more:hover {
   vertical-align: middle;
 }
 
+#main-playback {
+  margin-top: 10px;
+  background: black;
+  min-height: 280px;
+}
+
+#main-playback.video {
+  background: black;
+  padding: 0;
+}
+
 .movie-detail {
   height: 100%;
 }
@@ -2411,10 +2542,7 @@ a.more:hover {
   font-size: 13px;
   line-height: 20px;
   margin: 0;
-  color: #bbb;
-  border-left: 1px solid #ddd;
-  padding: 0 10px;
-  display: inline-block;
+  color: #999;
 }
 
 .movie-info p.meta.release-date {
@@ -2438,6 +2566,10 @@ a.more:hover {
 video {
   width: 100%;
   height: 280px;
+}
+
+.controls i {
+  font-size: 16px;
 }
 
 @-ms-keyframes fadeIn {
@@ -2579,6 +2711,88 @@ video {
     filter: alpha(opacity=0);
   }
 }
+#toggle .toggle {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  height: 50px;
+  z-index: 200;
+  overflow: hidden;
+  width: 100px;
+  background: white;
+  cursor: pointer;
+  -ms-border-radius: 30px;
+  -moz-border-radius: 30px;
+  -webkit-border-radius: 30px;
+  border-radius: 30px;
+}
+
+#toggle .toggle-on-label {
+  left: 0;
+  width: 50px;
+}
+
+#toggle .toggle-on-label,
+.toggle-off-label {
+  position: absolute;
+  height: 100%;
+  line-height: 50px;
+  text-align: center;
+  -ms-transition: -ms-transform .2s ease-out;
+  -moz-transition: -moz-transform .2s ease-out;
+  -webkit-transition: -webkit-transform .2s ease-out;
+  -ms-border-radius: 50px;
+  -moz-border-radius: 50px;
+  -webkit-border-radius: 50px;
+  border-radius: 50px;
+  -ms-transition: transform .2s ease-out;
+  -moz-transition: transform .2s ease-out;
+  -webkit-transition: transform .2s ease-out;
+  transition: transform .2s ease-out;
+}
+
+#toggle .toggle-off-label {
+  right: 0;
+  left: 50px;
+}
+
+#toggle .toggle-button {
+  position: absolute;
+  width: 50px;
+  height: 100%;
+  line-height: 50px;
+  text-align: center;
+  background: #1FDB9F;
+  -ms-transition: -ms-transform .2s ease-out;
+  -moz-transition: -moz-transform .2s ease-out;
+  -webkit-transition: -webkit-transform .2s ease-out;
+  -ms-border-radius: 50px;
+  -moz-border-radius: 50px;
+  -webkit-border-radius: 50px;
+  border-radius: 50px;
+  -ms-transition: transform .2s ease-out;
+  -moz-transition: transform .2s ease-out;
+  -webkit-transition: transform .2s ease-out;
+  transition: transform .2s ease-out;
+}
+
+#toggle .on .toggle-button {
+  -ms-transform: translateX(100%);
+  -moz-transform: translateX(100%);
+  -webkit-transform: translateX(100%);
+  transform: translateX(100%);
+}
+
+#toggle .off .toggle-button {
+  -ms-transform: translateX(0%);
+  -moz-transform: translateX(0%);
+  -webkit-transform: translateX(0%);
+  transform: translateX(0%);
+}
+
+#toggle {
+  text-align: center;
+}
 
 
 #currently-playing {
@@ -2659,6 +2873,24 @@ video {
 
 .zoom-background.in {
   -webkit-animation: opacity-anim 0.3s ease-out;
+}
+
+.zoom-background.in:before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0);
+  content: ' ';
+  -ms-transition: background 0.3s ease-out;
+  -moz-transition: background 0.3s ease-out;
+  -webkit-transition: background 0.3s ease-out;
+  transition: background 0.3s ease-out;
+}
+
+.zoom-background.in.fade:before {
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .zoom-background.out {
@@ -3191,11 +3423,12 @@ you can use the generic selector below, but it's slower:
 	font-size: 1.9em;
 }
 h2 {
-	font-size: 20px;
+	font-size: 15px;
 	font-weight: 600;
-	line-height: 20px;
-	padding: 0 0 15px 0;
-	color: #453649;
+	text-align: center;
+	text-shadow: none;
+	padding: 0 0 10px 0;
+	color: #CBBCCF;
 }
 
 h3 {
@@ -3693,6 +3926,18 @@ a.btn {
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
   border-radius: 2px;
+  -ms-transition: opacity 0.3s ease-out;
+  -moz-transition: opacity 0.3s ease-out;
+  -webkit-transition: opacity 0.3s ease-out;
+  transition: opacity 0.3s ease-out;
+}
+
+button.btn.disabled,
+a.btn.disabled {
+  opacity: 0.2;
+  -ms-filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=20);
+  filter: alpha(opacity=20);
+  pointer-events: none;
 }
 
 button.btn.small,
@@ -3710,6 +3955,21 @@ a.btn.primary {
 button.btn.primary:active,
 a.btn.primary:active {
   background: rgb(34, 107, 156);
+}
+
+button.btn.transparent,
+a.btn.transparent {
+  background: none;
+  -ms-border-radius: 1px;
+  -moz-border-radius: 1px;
+  -webkit-border-radius: 1px;
+  border-radius: 1px;
+}
+
+button.btn.transparent:active,
+a.btn.transparent:active {
+  background: #777;
+  color: white;
 }
 
 button.btn.dismiss,

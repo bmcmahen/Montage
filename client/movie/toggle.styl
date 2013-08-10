@@ -1,0 +1,54 @@
+#toggle .toggle {
+	position: relative;
+	overflow: hidden;
+	display: inline-block;
+	height: 50px;
+	z-index: 200;
+	overflow: hidden;
+	width: 100px;
+	border-radius: 30px;
+	background: white;
+	cursor: pointer;
+}
+
+#toggle .toggle-on-label {
+	left: 0;
+	width: 50px;
+}
+
+#toggle .toggle-on-label, .toggle-off-label {
+	position: absolute;
+	height: 100%;
+	line-height: 50px;
+	border-radius: 50px;
+	text-align: center;
+	transition: transform .2s ease-out;
+}
+
+#toggle .toggle-off-label {
+	right: 0;
+	left: 50px;
+}
+
+#toggle .toggle-button {
+	position: absolute;
+	width: 50px;
+	height: 100%;
+	line-height: 50px;
+	border-radius: 50px;
+	text-align: center;
+	background: #1FDB9F;
+	transition: transform .2s ease-out;
+}
+
+#toggle .on .toggle-button {
+	transform: translateX(100%);
+}
+
+#toggle .off .toggle-button {
+	transform: translateX(0%);
+}
+
+#toggle {
+	text-align: center;
+}

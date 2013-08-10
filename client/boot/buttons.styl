@@ -9,6 +9,13 @@ a.btn {
   font-weight: 500;
   margin: 2px 5px;
   border-radius: 2px;
+  transition: opacity 0.3s ease-out;
+}
+
+button.btn.disabled,
+a.btn.disabled {
+  opacity: 0.2;
+  pointer-events: none;
 }
 
 button.btn.small,
@@ -26,6 +33,18 @@ a.btn.primary {
 button.btn.primary:active,
 a.btn.primary:active {
   background: rgb(34, 107, 156);
+}
+
+button.btn.transparent,
+a.btn.transparent {
+  background: none;
+  border-radius: 1px;
+}
+
+button.btn.transparent:active,
+a.btn.transparent:active {
+  background: #777;
+  color: white;
 }
 
 button.btn.dismiss,

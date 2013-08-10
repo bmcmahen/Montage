@@ -9,7 +9,8 @@
     "bmcmahen/loading": "*",
     "anthonyshort/emitter-manager": "*",
     "component/dom": "*",
-    "component/fullscreen": "1.0.0"
+    "component/fullscreen": "1.0.0",
+    "segmentio/toggle": "*"
   },
   "license": "MIT",
   "main": "index.js",
@@ -17,7 +18,8 @@
     "index.js"
   ],
   "styles": [
-    "index.styl"
+    "index.styl",
+    "toggle.styl"
   ],
   "locals": [
     "session",

@@ -116,7 +116,9 @@ AddSourceView.prototype.addSource = function(e){
 /////////////////////////////////
 
 function CurrentDirectory(dirs){
-	this.dirs = dirs || ['/', 'Users/'];
+	// xxx we need to contact the server to ask
+	// for what the root directory is.
+	this.dirs = dirs || ['/'];
 }
 
 Emitter(CurrentDirectory.prototype);

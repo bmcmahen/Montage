@@ -19281,7 +19281,9 @@ AddSourceView.prototype.addSource = function(e){
 /////////////////////////////////
 
 function CurrentDirectory(dirs){
-	this.dirs = dirs || ['/', 'Users/'];
+	// xxx we need to contact the server to ask
+	// for what the root directory is.
+	this.dirs = dirs || ['/'];
 }
 
 Emitter(CurrentDirectory.prototype);
@@ -21792,6 +21794,199 @@ if (document.addEventListener) {
 }
 
 });
+require.register("yields-prevent/index.js", function(exports, require, module){
+
+/**
+ * prevent default on the given `e`.
+ * 
+ * examples:
+ * 
+ *      anchor.onclick = prevent;
+ *      anchor.onclick = function(e){
+ *        if (something) return prevent(e);
+ *      };
+ * 
+ * @param {Event} e
+ */
+
+module.exports = function(e){
+  e = e || window.event
+  return e.preventDefault
+    ? e.preventDefault()
+    : e.returnValue = false;
+};
+
+});
+require.register("yields-stop/index.js", function(exports, require, module){
+
+/**
+ * stop propagation on the given `e`.
+ * 
+ * examples:
+ * 
+ *      anchor.onclick = require('stop');
+ *      anchor.onclick = function(e){
+ *        if (!some) return require('stop')(e);
+ *      };
+ * 
+ * 
+ * @param {Event} e
+ */
+
+module.exports = function(e){
+  e = e || window.event;
+  return e.stopPropagation
+    ? e.stopPropagation()
+    : e.cancelBubble = true;
+};
+
+});
+require.register("segmentio-toggle/index.js", function(exports, require, module){
+
+var classes = require('classes')
+  , domify = require('domify')
+  , Emitter = require('emitter')
+  , events = require('events')
+  , prevent = require('prevent')
+  , stop = require('stop')
+  , template = require('./template')
+  , value = require('value');
+
+
+module.exports = Toggle;
+
+
+/**
+ * Initialize a new toggle, optionally taking it's settings from an existing
+ * DOM element.
+ *
+ * @param {Boolean} val (optional)
+ * @param {Element} el (optional)
+ */
+
+function Toggle (val, el) {
+  this.el = el || domify(template);
+  this.checkbox = this.el.querySelector('.toggle-checkbox');
+  if (el) val = value(this.checkbox);
+  if (val !== undefined) this.value(val);
+  this.events = events(this.el, this);
+  this.events.bind('click');
+}
+
+
+/**
+ * Mixin emitter.
+ */
+
+Emitter(Toggle.prototype);
+
+
+/**
+ * Get or set the value of the toggle.
+ *
+ * @param {Boolean} val
+ * @return {Toggle}
+ */
+
+Toggle.prototype.value = function (val) {
+  value(this.checkbox, val);
+  this.toggleClass('on', val);
+  this.toggleClass('off', !val);
+  this.emit('change', val);
+  return this;
+};
+
+
+/**
+ * Set the toggle's name, on the checkbox. That way forms that get submitted
+ * will get the proper value.
+ *
+ * @param {String} name
+ * @return {Toggle}
+ */
+
+Toggle.prototype.name = function (name) {
+  this.checkbox.name = name;
+};
+
+
+/**
+ * Toggle the toggle :)
+ *
+ * @return {Toggle}
+ */
+
+Toggle.prototype.toggle = function () {
+  this.value(!value(this.checkbox));
+  return this;
+};
+
+
+/**
+ * Set the `on` and `off` labels for the toggle.
+ *
+ * @param {String} on   Text for the `on` position.
+ * @param {String} off  Text for the `off` position.
+ */
+
+Toggle.prototype.label = function (on, off) {
+  if (on) this.el.querySelector('.toggle-on-label').innerHTML = on;
+  if (off) this.el.querySelector('.toggle-off-label').innerHTML = off;
+};
+
+
+/**
+ * Add class.
+ *
+ * @param {String} name  Classname to add.
+ * @return {Toggle}
+ */
+
+Toggle.prototype.addClass = function (name) {
+  classes(this.el).add(name);
+  return this;
+};
+
+
+/**
+ * Remove class.
+ *
+ * @param {String} name  Classname to remove.
+ * @return {Toggle}
+ */
+
+Toggle.prototype.removeClass = function (name) {
+  classes(this.el).remove(name);
+  return this;
+};
+
+
+/**
+ * Toggle class.
+ *
+ * @param {String} name  Classname to toggle.
+ */
+
+Toggle.prototype.toggleClass = function (name, to) {
+  if (to === undefined) to = classes(this.el).has(name);
+  var method = to ? 'add' : 'remove';
+  classes(this.el)[method](name);
+};
+
+
+/**
+ * Click handler, toggle our value.
+ */
+
+Toggle.prototype.onclick = function (e) {
+  prevent(e);
+  stop(e);
+  this.toggle();
+};
+});
+require.register("segmentio-toggle/template.js", function(exports, require, module){
+module.exports = '<div class="toggle off">\n  <label class="toggle-on-label">On</label>\n  <input class="toggle-checkbox" type="checkbox">\n  <label class="toggle-off-label">Off</label>\n</div>';
+});
 require.register("movie/index.js", function(exports, require, module){
 var Session = require('../session');
 var ddp = require('../sockets').ddp;
@@ -21804,6 +21999,9 @@ var loading = require('loading');
 var EmitterManager = require('emitter-manager');
 var onload = require('onload');
 var fullscreen = require('fullscreen');
+var Toggle = require('toggle');
+
+Session.setDefault('playbackDevice', 'raspberrypi');
 
 /////////////////////////////////
 // Adapt Reactive to Backbone  //
@@ -21823,6 +22021,14 @@ reactive.subscribe(function(obj, prop, fn){
 
 reactive.unsubscribe(function(obj, prop, fn){
   obj.unbind('change:'+ prop, fn);
+});
+
+reactive.bind('disable-if', function(el, name){
+	var $el = dom(el);
+	this.change(function(){
+		if (this.value(name)) $el.addClass('disabled');
+		else $el.removeClass('disabled');
+	});
 });
 
 /////////////////////////
@@ -21915,25 +22121,43 @@ TabView.prototype.subtitleView = function(e){
 function MovieView(movie){
 	this.model = movie;
 	this.$el = dom(require('./templates/playback.html'));
-	this.playbackDevice = 'local';
+	this.playbackDevice = Session.get('playbackDevice');
 	this.isPlaying = false;
+	this.hasStarted = false;
 }
+
+EmitterManager(MovieView.prototype);
 
 
 MovieView.prototype.render = function(){
 	reactive(this.$el.get(), this.model, this);
+	var toggleEl = this.$el.find('.toggle').get();
+	var toggled = (this.playbackDevice === 'raspberrypi')
+		? true : false;
+	this.toggle = new Toggle(null, toggleEl);
+	this.toggle.value(toggled);
+	this.bind();
 	return this;
 };
 
-MovieView.prototype.setPlaybackDevice = function(){
-	var selected = this.$el.find('select').value();
-	this.playbackDevice = selected;
-	this.model.trigger('change:isLocal');
+MovieView.prototype.bind = function(){
+	this.listenTo(this.toggle, 'change', this.togglePlayback);
+};
+
+MovieView.prototype.togglePlayback = function(val){
+	// on = raspberrypi
+	// off = currentDevice
+	this.playbackDevice = val ? 'raspberrypi' : 'local';
+	Session.set('playbackDevice', this.playbackDevice);
+	this.model.trigger('change:isPi');
+	if (this.video && this.playbackDevice === 'raspberrypi') {
+		this.currentTime = this.video.currentTime;
+	}
 }
 
 MovieView.prototype.rewind = function(e){
 	e.preventDefault();
-	if (this.playbackDevice === 'local'){
+	if (this.playbackDevice !== 'raspberrypi'){
 		if (!this.video) return;
 		this.video.currentTime = this.video.currentTime - 30;
 	} else {
@@ -21947,6 +22171,36 @@ MovieView.prototype.image_url = function(){
 	return '/movies/w342'+this.model.get('original_poster_path');;
 };
 
+MovieView.prototype.volumeUp = function(){
+	if (this.playbackDevice === 'raspberrypi'){
+		ddp.call('volumeUp', function(err){
+			if (err) console.log(err);
+		});
+	} else {
+		if (this.video) {
+			this.video.volume += 0.1;
+		}
+	}
+};
+
+MovieView.prototype.volumeDown = function(){
+	if (this.playbackDevice === 'raspberrypi'){
+		ddp.call('volumeDown', function(err){
+			if (err) console.log(err);
+		});
+	} else {
+		if (this.video) {
+			this.video.volume -= 0.1;
+		}
+	}
+};
+
+MovieView.prototype.toggleSubtitles = function(){
+	ddp.call('toggleSubtitles', function(err){
+		if (err) console.log(err);
+	});
+};
+
 
 MovieView.prototype.forward = function(e){
 	e.preventDefault();
@@ -21958,16 +22212,24 @@ MovieView.prototype.forward = function(e){
 			console.log('froward result.')
 		});
 	}
-	console.log('forward')
 };
 
 MovieView.prototype.isPlaying = function(){
 	return this.isPlaying;
-}
-
-MovieView.prototype.isLocal = function(){
-	return this.playbackDevice === 'local';
 };
+
+MovieView.prototype.started = function(){
+	return this.hasStarted;
+};
+
+MovieView.prototype.isPi = function(){
+	return (this.playbackDevice === 'raspberrypi');
+};
+
+MovieView.prototype.isLocalAndStarted = function(){
+	console.log(!this.isPi(), this.started());
+	return (!this.isPi() && this.started());
+}
 
 MovieView.prototype.playbackLocal = function(){
 	if (!this.isPlaying){
@@ -21981,6 +22243,7 @@ MovieView.prototype.playbackLocal = function(){
 			this.$el
 				.find('#main-playback')
 				.empty()
+				.addClass('video')
 				.append($video);
 			this.video = $video.get();
 			this.videoEvents = events(this.video, this);
@@ -21990,21 +22253,34 @@ MovieView.prototype.playbackLocal = function(){
 		}
 		this.isPlaying = true;
 		this.model.trigger('change:isPlaying', true);
+		dom('.zoom-background').addClass('fade');
 		this.video.play();
+		this.tempEvents = events(document, this);
+		this.tempEvents.bind('click', 'playbackLocal');
 	} else {
 		this.isPlaying = false;
 		this.model.trigger('change:isPlaying', false);
+		this.tempEvents.unbind();
 		this.video.pause();
 	}
 };
 
+MovieView.prototype.notPlaying = function(){
+	return !this.isPlaying;
+};
+
+MovieView.prototype.isPlaying = function(){
+	return this.isPlaying;
+};
 
 MovieView.prototype.onpause = function(){
 	this.isPlaying = false;
 	this.model.trigger('change:isPlaying');
+	dom('.zoom-background').removeClass('fade');
 };
 
 MovieView.prototype.toggleFullscreen = function(e){
+	e.stopPropagation();
 	if (this.video) {
 		if (this.video.webkitEnterFullscreen)
 			this.video.webkitEnterFullscreen();
@@ -22015,24 +22291,28 @@ MovieView.prototype.toggleFullscreen = function(e){
 
 MovieView.prototype.play = function(e){
 	e.preventDefault();
+	e.stopPropagation();
 
-	if (this.playbackDevice === 'local') {
+	if (this.playbackDevice !== 'raspberrypi') {
 		return this.playbackLocal();
 	}
 
-	if (this.model.get('isPlaying')) {
-		ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
-      console.log('pause video');
-    });
-		this.model.set('isPlaying', false);
-		Session.set('current_playback', null);
+	if (this.isPlaying) {
+		// ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
+  //     console.log('pause video', err);
+  //   });
+    this.isPlaying = false;
+    this.model.trigger('change:isPlaying');
 	} else {
-		ddp.call('playVideo', this.model.toJSON(), function(err, res){
-			console.log('play video');
-		});
-		this.model.set('isPlaying', true);
-		Session.set('current_playback', this.model);
+		var options = {};
+		options.currentTime = this.currentTime;
+		// ddp.call('playVideo', this.model.toJSON(), options, function(err, res){
+		// 	console.log('play video');
+		// });
+		this.isPlaying = true;
+		this.model.trigger('change:isPlaying');
 	}
+
 };
 
 MovieView.prototype.close = function(){
@@ -22897,8 +23177,10 @@ module.exports = 'li.label\n	span Movies';
 
 
 
+
+
 require.register("movie/templates/playback.html", function(exports, require, module){
-module.exports = '<div>\n\n	<div id=\'main-playback\' class=\'segment clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n			<p data-show=\'release_date\' class=\'meta release-date\'>  {release_date} </p>\n			<p data-show=\'runtime\' class=\'meta\'> {runtime + \' Minutes\'} </p>\n			<p data-show=\'budget\' class=\'meta\'> {\'$\' + budget} </p>\n			<p data-show=\'plot\'> {plot} </p>\n		</div>\n	</div>\n\n	<div class=\'segment\'>\n		<div id=\'toggle\'>\n			<select on-change=\'setPlaybackDevice\'>\n				<option value=\'local\'>This Device</option>\n				<option value=\'remote\'>Television</option>\n			</select>\n					<button class=\'btn primary\' data-show=\'isLocal\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n	</div>\n\n</div>\n\n\n';
+module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>Pi</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isPi\' disable-if=\'notPlaying < isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-show=\'isPi\' disable-if=\'notPlaying < isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if=\'notPlaying <isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if=\'notPlaying < isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<button class=\'btn transparent\' disable-if=\'notPlaying < isPlaying\' on-click=\'volumeUp\'><i class=\'icon-volume-high\'></i></button>\n			<button class=\'btn transparent\' disable-if=\'notPlaying < isPlaying\' on-click=\'volumeDown\'><i class=\'icon-volume-low\'></i></button>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
 module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
@@ -23481,6 +23763,34 @@ require.alias("yields-traverse/index.js", "yields-traverse/index.js");
 require.alias("component-fullscreen/index.js", "movie/deps/fullscreen/index.js");
 require.alias("component-emitter/index.js", "component-fullscreen/deps/emitter/index.js");
 require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
+
+require.alias("segmentio-toggle/index.js", "movie/deps/toggle/index.js");
+require.alias("segmentio-toggle/template.js", "movie/deps/toggle/template.js");
+require.alias("component-classes/index.js", "segmentio-toggle/deps/classes/index.js");
+require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
+
+require.alias("component-domify/index.js", "segmentio-toggle/deps/domify/index.js");
+
+require.alias("component-emitter/index.js", "segmentio-toggle/deps/emitter/index.js");
+require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
+
+require.alias("component-events/index.js", "segmentio-toggle/deps/events/index.js");
+require.alias("component-event/index.js", "component-events/deps/event/index.js");
+
+require.alias("component-delegate/index.js", "component-events/deps/delegate/index.js");
+require.alias("component-matches-selector/index.js", "component-delegate/deps/matches-selector/index.js");
+require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
+
+require.alias("component-event/index.js", "component-delegate/deps/event/index.js");
+
+require.alias("component-value/index.js", "segmentio-toggle/deps/value/index.js");
+require.alias("component-value/index.js", "segmentio-toggle/deps/value/index.js");
+require.alias("component-type/index.js", "component-value/deps/type/index.js");
+
+require.alias("component-value/index.js", "component-value/index.js");
+require.alias("yields-prevent/index.js", "segmentio-toggle/deps/prevent/index.js");
+
+require.alias("yields-stop/index.js", "segmentio-toggle/deps/stop/index.js");
 
 require.alias("movie/index.js", "movie/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
