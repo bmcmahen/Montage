@@ -10,7 +10,8 @@
     "anthonyshort/emitter-manager": "*",
     "component/dom": "*",
     "component/fullscreen": "1.0.0",
-    "segmentio/toggle": "*"
+    "segmentio/toggle": "*",
+    "bmcmahen/slider": "*"
   },
   "license": "MIT",
   "main": "index.js",

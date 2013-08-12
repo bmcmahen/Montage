@@ -51,11 +51,10 @@ var Movies = Collection.extend({
   // Listen to our subscriptions, and update accordingly.
   initialize: function(){
     this.initialLoad = true;
-    subscriptions.on('movies', this.handleSubscription.bind(this));
+    subscriptions.on('movies', this.set.bind(this));
     subscriptions.on('movies:added', this.addMovie.bind(this));
     subscriptions.on('movies:changed', this.changeMovie.bind(this));
     subscriptions.on('movies:removed', this.remove.bind(this));
-    this.listenTo(this, 'reset', this.setGridHeight);
     this.sortOrder = 'title';
   },
 
@@ -80,21 +79,6 @@ var Movies = Collection.extend({
   changeMovie: function(doc){
     this.add(doc, { merge : true });
     return this;
-  },
-
-  /**
-   * On our initial load, use reset. This allows us to optimize
-   * the initial layout of our DOM elements, minimizing
-   * redraws.
-   * @param  {Array} docs
-   */
-
-  handleSubscription: function(docs){
-    if (this.initialLoad) {
-      this.initialLoad = false;
-      return this.reset(docs);
-    }
-    this.set(docs);
   }
 
 });

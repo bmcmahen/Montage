@@ -92,6 +92,7 @@ var Session = require('session');
   var collection = require('collections');
 
   var updateStore = function(model){
+    console.log('updating store', model);
     Session.set('selected_movie', Session.get('selected_movie'), {
       silent: true
     });
@@ -122,43 +123,44 @@ var Session = require('session');
 
 })();
 
+require('current_playback');
 
 /////////////////////////////
 // Handle Current Playback //
 /////////////////////////////
 
-(function(){
+// (function(){
 
-  var CurrentlyPlayingView = require('current_playback');
-  var parent = document.getElementById('library-control');
-  var currentPlaybackView;
-  var collection = require('collections');
+//   var CurrentlyPlayingView = require('current_playback');
+//   var parent = document.getElementById('library-control');
+//   var currentPlaybackView;
+//   var collection = require('collections');
 
-  var updateStore = function(model){
-    Session.set('current_playback', Session.get('current_playback'), {
-      silent: true
-    });
-  }
+//   var updateStore = function(model){
+//     Session.set('current_playback', Session.get('current_playback'), {
+//       silent: true
+//     });
+//   }
 
-  function showPlay(val){
-    if (currentPlaybackView) currentPlaybackView.close();
-    if (val){
-      if (!(val instanceof Model)) {
-        collection.add(val);
-        val = collection.get(val._id);
-      }
-      val.isPlaying = true;
-      val.on('change', updateStore);
-      currentPlaybackView = new CurrentlyPlayingView(val);
-      parent.appendChild(currentPlaybackView.$el.get());
-      currentPlaybackView.show();
-    }
-  }
+//   function showPlay(val){
+//     if (currentPlaybackView) currentPlaybackView.close();
+//     if (val){
+//       if (!(val instanceof Model)) {
+//         collection.add(val);
+//         val = collection.get(val._id);
+//       }
+//       val.isPlaying = true;
+//       val.on('change', updateStore);
+//       currentPlaybackView = new CurrentlyPlayingView(val);
+//       parent.appendChild(currentPlaybackView.$el.get());
+//       currentPlaybackView.show();
+//     }
+//   }
 
-  Session.on('change:current_playback', showPlay);
-  var holdover = Session.get('current_playback');
-  if (holdover) showPlay(holdover);
+//   Session.on('change:current_playback', showPlay);
+//   var holdover = Session.get('current_playback');
+//   if (holdover) showPlay(holdover);
 
-})();
+// })();
 
 require('image_zoom');

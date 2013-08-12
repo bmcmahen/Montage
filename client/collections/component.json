@@ -11,6 +11,7 @@
   "main": "movies.js",
   "scripts": [
     "movies.js",
-    "sources.js"
+    "sources.js",
+    "currently_playing.js"
   ]
 }

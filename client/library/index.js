@@ -194,7 +194,6 @@ SwipeView.prototype.resetView = function(){
  */
 
 SwipeView.prototype.addPane = function(chunk, index){
-  console.log('adding pane');
   var view = new SwipeItem(this, chunk);
   this.$swipe.appendChild(view.$el);
   this.subviews.push(view);
@@ -363,8 +362,6 @@ SwipeView.prototype.determineGridItemTotal = function(){
   g.bpr = Math.floor(g.cw / (BOX_WIDTH + PADDING_WIDTH));
   g.rows = Math.floor(g.ch / ((BOX_HEIGHT + PADDING_HEIGHT) + PADDING_HEIGHT));
 
-  console.log('ROWS', g.rows);
-
   // box dimensions
   // g.newWidth = (g.cw - (g.bpr * PADDING_WIDTH)) / g.bpr;
   // g.newHeight = (g.newWidth / BOX_WIDTH) * BOX_HEIGHT;
@@ -394,21 +391,17 @@ SwipeView.prototype.determineGridItemTotal = function(){
 
 SwipeView.prototype.spliceCollection = function(){
   var size = this.grid.total;
-  console.log('new collection length', collection.length, collection);
   var iterations = Math.ceil(collection.length / size);
   var subs = this.chunkCollection;
   var len = subs.length();
 
   var createNewChunk = function(chunk){
-    console.log('add chunk!');
     subs.add(new Chunk(chunk));
   };
 
-  console.log('iterations & prev length', iterations, len);
   // If we need to remove chunks...
   if (iterations < len){
     for (var p = 0; p < (len - iterations); p++){
-      console.log('pop!');
       subs.pop();
     }
   }
@@ -490,7 +483,6 @@ SwipeView.prototype.mapAlphabet = function(){
     insertMissing(missing + 1, this.chunkCollection.length() - 1);
   }
 
-  console.log(this.alphabet);
 };
 
 ///////////////////////
@@ -535,7 +527,6 @@ SwipeItem.prototype.removeChild = function(model){
 };
 
 SwipeItem.prototype.addChild = function(model){
-  console.log('adding child');
   var view = new MovieItem(model).render();
   this.children.push(view);
 };
@@ -698,7 +689,6 @@ MovieItem.prototype.deleteMovie = function(e){
 };
 
 MovieItem.prototype.exitEdit = function(){
-  console.log('exit edit!');
   this.$el.querySelector('.images').classList.remove('edit');
   addEvent.unbind(this.$el.querySelector('.icon-close'), 'click', this._boundDelete);
   addEvent.unbind(document, 'click', this._boundExitEdit);
@@ -713,14 +703,12 @@ MovieItem.prototype.enterEditMode = function(){
 };
 
 MovieItem.prototype.changeTitle = function(){
-  console.log('CHANGE TITLE', this.model.get('title'));
   var title = this.model.get('title') || this.model.get('file_name');
   $(this.$el).find('.name').text(title);
   // this.$el.querySelector('.name').textContext = title;
 };
 
 MovieItem.prototype.changeRuntime = function(){
-  console.log('CHANGE RUNTIME', this.model.get('runtime'));
   var runtime = this.model.get('runtime');
   $(this.$el).find('.meta').text(runtime + ' Minutes');
   // this.$el.querySelector('.meta').textContext = runtime;

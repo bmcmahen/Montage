@@ -1919,6 +1919,42 @@ a.torrent i {
   -webkit-transform: translateX(-100%);
           transform: translateX(-100%);
 }
+.slider {
+	width: 175px;
+	display: table;
+}
+
+.slider-min-value, .slider-max-value {
+	width: 30px;
+	display: table-cell;
+	text-align: center;
+	vertical-align: bottom;
+	padding: 0 5px;
+	text-decoration: none;
+}
+
+.slider-range {
+	display: table-cell;
+	vertical-align: middle;
+}
+
+.slider input[type=range] {
+	box-sizing: border-box;
+  -webkit-appearance: none;
+  width: 100%;
+  background-color: silver;
+  height: 3px;
+}
+
+.slider input[type="range"]::-webkit-slider-thumb {
+ -webkit-appearance: none;
+  background-color: #79A6CC;
+  border-radius: 50%;
+  opacity: 0.95;
+  width: 15px;
+  height: 15px;
+}
+
 .fade-in {
   -ms-animation-duration: .3s;
   -moz-animation-duration: .3s;
@@ -2572,6 +2608,47 @@ video {
   font-size: 16px;
 }
 
+.slider input[type=range] {
+  padding: 0;
+  /*vertical-align: bottom;*/
+}
+
+.slider.volume a {
+  display: inline-block;
+  padding: 0 5px;
+  margin: 0;
+  margin-top: 8px;
+}
+
+.slider.volume a i {
+  padding: 0;
+}
+
+.slider {
+  width: 135px;
+  opacity: 1;
+  -ms-filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=100);
+  filter: alpha(opacity=100);
+  float: right;
+  margin-right: 15px;
+  -ms-transition: opacity 0.3s linear;
+  -moz-transition: opacity 0.3s linear;
+  -webkit-transition: opacity 0.3s linear;
+  transition: opacity 0.3s linear;
+}
+
+.slider.disabled {
+  pointer-events: none;
+  opacity: 0.2;
+  -ms-filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=20);
+  filter: alpha(opacity=20);
+}
+
+.slider .slider-min-value,
+.slider .slider-max-value {
+  width: 15px;
+}
+
 @-ms-keyframes fadeIn {
   0% {
     opacity: 0;
@@ -2797,9 +2874,7 @@ video {
 
 #currently-playing {
   padding: 5px 8px;
-  background: #5cb85c;
-  color: white;
-  width: 120px;
+  color: rgb(107, 107, 107);
   margin: 7px;
   position: absolute;
   top: 0;
@@ -2825,8 +2900,20 @@ video {
   transition: transform 0.4s ease-out;
 }
 
+#currently-playing span {
+  margin-top: 5px;
+  width: 115px;
+  display: inline-block;
+  padding-left: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: left;
+}
+
 #currently-playing:active {
   background: #333;
+  color: white;
 }
 
 #currently-playing.in {
@@ -2844,11 +2931,9 @@ video {
   transition: transform 0.4s ease-out;
 }
 
-#currently-playing .icon-play {
-  font-size: 17px;
-  margin-right: 0;
+#currently-playing .icon-tv {
+  font-size: 22px;
   float: left;
-  display: block;
   vertical-align: bottom;
 }
 

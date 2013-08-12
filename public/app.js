@@ -15814,6 +15814,7 @@ function Subscriptions(){
 	});
 
 	ddp.on('changed', function(data){
+		console.log('changed', data);
 		self.emit(data.collection + ':changed', data.fields);
 	});
 
@@ -15827,6 +15828,7 @@ Emitter(Subscriptions.prototype);
 ddp.on('connected', function(){
 	ddp.subscribe('movies');
 	ddp.subscribe('sources');
+	ddp.subscribe('currentlyPlaying');
 	ddp.isReady = true;
 });
 
@@ -16002,11 +16004,10 @@ var Movies = Collection.extend({
   // Listen to our subscriptions, and update accordingly.
   initialize: function(){
     this.initialLoad = true;
-    subscriptions.on('movies', this.handleSubscription.bind(this));
+    subscriptions.on('movies', this.set.bind(this));
     subscriptions.on('movies:added', this.addMovie.bind(this));
     subscriptions.on('movies:changed', this.changeMovie.bind(this));
     subscriptions.on('movies:removed', this.remove.bind(this));
-    this.listenTo(this, 'reset', this.setGridHeight);
     this.sortOrder = 'title';
   },
 
@@ -16031,21 +16032,6 @@ var Movies = Collection.extend({
   changeMovie: function(doc){
     this.add(doc, { merge : true });
     return this;
-  },
-
-  /**
-   * On our initial load, use reset. This allows us to optimize
-   * the initial layout of our DOM elements, minimizing
-   * redraws.
-   * @param  {Array} docs
-   */
-
-  handleSubscription: function(docs){
-    if (this.initialLoad) {
-      this.initialLoad = false;
-      return this.reset(docs);
-    }
-    this.set(docs);
   }
 
 });
@@ -16086,6 +16072,34 @@ var Sources = Collection.extend({
 });
 
 module.exports = new Sources();
+});
+require.register("collections/currently_playing.js", function(exports, require, module){
+var Model = require('backbone').Model;
+var _ = require('underscore');
+var ddp = require('../sockets').ddp;
+var subscriptions = require('../sockets').subscriptions;
+
+var CurrentlyPlaying = Model.extend({
+
+	idAttribute: '_id',
+
+	initialize: function(){
+		subscriptions.on('currentlyPlaying', this.handleSubscription.bind(this));
+		subscriptions.on('currentlyPlaying:changed', this.movieChanged.bind(this));
+	},
+
+	handleSubscription: function(doc){
+		this.attributes = doc[0];
+		this.trigger('change');
+	},
+
+	movieChanged: function(doc){
+		this.attributes = doc;
+		this.trigger('change');
+	}
+});
+
+module.exports = new CurrentlyPlaying();
 });
 require.register("controls/index.js", function(exports, require, module){
 var VideoControls = function(){
@@ -18168,7 +18182,6 @@ SwipeView.prototype.resetView = function(){
  */
 
 SwipeView.prototype.addPane = function(chunk, index){
-  console.log('adding pane');
   var view = new SwipeItem(this, chunk);
   this.$swipe.appendChild(view.$el);
   this.subviews.push(view);
@@ -18337,8 +18350,6 @@ SwipeView.prototype.determineGridItemTotal = function(){
   g.bpr = Math.floor(g.cw / (BOX_WIDTH + PADDING_WIDTH));
   g.rows = Math.floor(g.ch / ((BOX_HEIGHT + PADDING_HEIGHT) + PADDING_HEIGHT));
 
-  console.log('ROWS', g.rows);
-
   // box dimensions
   // g.newWidth = (g.cw - (g.bpr * PADDING_WIDTH)) / g.bpr;
   // g.newHeight = (g.newWidth / BOX_WIDTH) * BOX_HEIGHT;
@@ -18368,21 +18379,17 @@ SwipeView.prototype.determineGridItemTotal = function(){
 
 SwipeView.prototype.spliceCollection = function(){
   var size = this.grid.total;
-  console.log('new collection length', collection.length, collection);
   var iterations = Math.ceil(collection.length / size);
   var subs = this.chunkCollection;
   var len = subs.length();
 
   var createNewChunk = function(chunk){
-    console.log('add chunk!');
     subs.add(new Chunk(chunk));
   };
 
-  console.log('iterations & prev length', iterations, len);
   // If we need to remove chunks...
   if (iterations < len){
     for (var p = 0; p < (len - iterations); p++){
-      console.log('pop!');
       subs.pop();
     }
   }
@@ -18464,7 +18471,6 @@ SwipeView.prototype.mapAlphabet = function(){
     insertMissing(missing + 1, this.chunkCollection.length() - 1);
   }
 
-  console.log(this.alphabet);
 };
 
 ///////////////////////
@@ -18509,7 +18515,6 @@ SwipeItem.prototype.removeChild = function(model){
 };
 
 SwipeItem.prototype.addChild = function(model){
-  console.log('adding child');
   var view = new MovieItem(model).render();
   this.children.push(view);
 };
@@ -18672,7 +18677,6 @@ MovieItem.prototype.deleteMovie = function(e){
 };
 
 MovieItem.prototype.exitEdit = function(){
-  console.log('exit edit!');
   this.$el.querySelector('.images').classList.remove('edit');
   addEvent.unbind(this.$el.querySelector('.icon-close'), 'click', this._boundDelete);
   addEvent.unbind(document, 'click', this._boundExitEdit);
@@ -18687,14 +18691,12 @@ MovieItem.prototype.enterEditMode = function(){
 };
 
 MovieItem.prototype.changeTitle = function(){
-  console.log('CHANGE TITLE', this.model.get('title'));
   var title = this.model.get('title') || this.model.get('file_name');
   $(this.$el).find('.name').text(title);
   // this.$el.querySelector('.name').textContext = title;
 };
 
 MovieItem.prototype.changeRuntime = function(){
-  console.log('CHANGE RUNTIME', this.model.get('runtime'));
   var runtime = this.model.get('runtime');
   $(this.$el).find('.meta').text(runtime + ' Minutes');
   // this.$el.querySelector('.meta').textContext = runtime;
@@ -21987,6 +21989,92 @@ Toggle.prototype.onclick = function (e) {
 require.register("segmentio-toggle/template.js", function(exports, require, module){
 module.exports = '<div class="toggle off">\n  <label class="toggle-on-label">On</label>\n  <input class="toggle-checkbox" type="checkbox">\n  <label class="toggle-off-label">Off</label>\n</div>';
 });
+require.register("bmcmahen-slider/index.js", function(exports, require, module){
+var classes = require('classes');
+var domify = require('domify');
+var Emitter = require('emitter');
+var events = require('events');
+var template = require('./template.html');
+var value = require('value');
+var setEvent = require('event');
+
+function Slider(val, el){
+	this.el = el || domify(template);
+	this.slider = this.el.querySelector('input');
+	if (el) val = value(this.slider);
+	if (val !== undefined) this.setValue(val);
+	this.bind();
+};
+
+module.exports = Slider;
+
+Emitter(Slider.prototype);
+
+Slider.prototype.bind = function(){
+	this.events = events(this.el, this);
+	this.events.bind('change input', 'onsliderchange');
+
+	var minTrigger = this.el.querySelector('a.slider-min-value');
+	var self = this;
+	setEvent.bind(minTrigger, 'click', function(e){
+		e.preventDefault();
+		e.stopPropagation();
+		self.setValue(self.min);
+		self.onsliderchange();
+	});
+
+	var maxTrigger = this.el.querySelector('a.slider-max-value');
+	setEvent.bind(maxTrigger, 'click', function(e){
+		e.preventDefault();
+		e.stopPropagation();
+		self.setValue(self.max);
+		self.onsliderchange();
+	});
+};
+
+Slider.prototype.activateSlider = function(){
+	classes(this.el).add('slider-in');
+};
+
+Slider.prototype.deactivateSlider = function(){
+	classes(this.el).remove('slider-in');
+};
+
+Slider.prototype.minIndicator = function(html){
+	this.el.querySelector('.slider-min-value').innerHTML = html;
+	return this;
+};
+
+Slider.prototype.maxIndicator = function(html){
+	this.el.querySelector('.slider-max-value').innerHTML = html;
+	return this;
+};
+
+Slider.prototype.setValue = function(val){
+	value(this.slider, val);
+	return this;
+};
+
+Slider.prototype.onsliderchange = function(){
+	var previousValue = this.value;
+	this.value = value(this.slider);
+	this.emit('change:value', this.value, previousValue);
+};
+
+Slider.prototype.range = function(min, max) {
+	this.min = min;
+	this.max = max;
+	this.slider.setAttribute('min', min);
+	this.slider.setAttribute('max', max);
+	return this;
+};
+
+Slider.prototype.step = function(step) {
+	this._step = step;
+	this.slider.setAttribute('step', step);
+	return this;
+};
+});
 require.register("movie/index.js", function(exports, require, module){
 var Session = require('../session');
 var ddp = require('../sockets').ddp;
@@ -22000,6 +22088,7 @@ var EmitterManager = require('emitter-manager');
 var onload = require('onload');
 var fullscreen = require('fullscreen');
 var Toggle = require('toggle');
+var Slider = require('slider');
 
 Session.setDefault('playbackDevice', 'raspberrypi');
 
@@ -22037,6 +22126,7 @@ reactive.bind('disable-if', function(el, name){
 
 function TabView(movie, init){
 	this.init = init || 'playView';
+	console.log('MOVIE', movie.toJSON());
 	this.movie = movie;
 	this.$el = dom(require('./templates/container.html'));
 	this.el = this.$el.get();
@@ -22122,7 +22212,16 @@ function MovieView(movie){
 	this.model = movie;
 	this.$el = dom(require('./templates/playback.html'));
 	this.playbackDevice = Session.get('playbackDevice');
-	this.isPlaying = false;
+	console.log(this.playbackDevice);
+	if (this.playbackDevice === 'raspberrypi') {
+		if (this.model.get('playback') === 'playing') {
+			console.log('IS PLAYING');
+			this.isPlaying = true;
+		} else {
+			console.log('IS PAUSED');
+			this.isPlaying = false;
+		}
+	}
 	this.hasStarted = false;
 }
 
@@ -22136,12 +22235,29 @@ MovieView.prototype.render = function(){
 		? true : false;
 	this.toggle = new Toggle(null, toggleEl);
 	this.toggle.value(toggled);
+
+	var volEl = this.$el.find('.volume').get();
+	this.volume = new Slider(null, volEl)
+		.range(0, 10)
+		.step(1);
+
+
+	var volume = (this.playbackDevice === 'raspberrypi')
+		? Session.get('tvVolume')
+		: Session.get('volume');
+	this.volume.setValue(volume || 0);
 	this.bind();
 	return this;
 };
 
+MovieView.prototype.oncontrolclick = function(e){
+	e.stopPropagation();
+	e.preventDefault();
+};
+
 MovieView.prototype.bind = function(){
 	this.listenTo(this.toggle, 'change', this.togglePlayback);
+	this.listenTo(this.volume, 'change:value', this.changeVolume);
 };
 
 MovieView.prototype.togglePlayback = function(val){
@@ -22152,11 +22268,14 @@ MovieView.prototype.togglePlayback = function(val){
 	this.model.trigger('change:isPi');
 	if (this.video && this.playbackDevice === 'raspberrypi') {
 		this.currentTime = this.video.currentTime;
+		this.video.pause();
+		this.play();
 	}
 }
 
 MovieView.prototype.rewind = function(e){
 	e.preventDefault();
+	e.stopPropagation();
 	if (this.playbackDevice !== 'raspberrypi'){
 		if (!this.video) return;
 		this.video.currentTime = this.video.currentTime - 30;
@@ -22171,28 +22290,27 @@ MovieView.prototype.image_url = function(){
 	return '/movies/w342'+this.model.get('original_poster_path');;
 };
 
-MovieView.prototype.volumeUp = function(){
-	if (this.playbackDevice === 'raspberrypi'){
-		ddp.call('volumeUp', function(err){
-			if (err) console.log(err);
-		});
+MovieView.prototype.changeVolume = function(val, prev){
+	if (this.playbackDevice === 'raspberrypi') {
+		Session.set('tvVolume', val);
+		if (val > prev) this.volumeUp();
+		else this.volumeDown();
 	} else {
-		if (this.video) {
-			this.video.volume += 0.1;
-		}
+		Session.set('volume', val);
+		this.video.volume = (val / 10);
 	}
 };
 
-MovieView.prototype.volumeDown = function(){
-	if (this.playbackDevice === 'raspberrypi'){
-		ddp.call('volumeDown', function(err){
-			if (err) console.log(err);
-		});
-	} else {
-		if (this.video) {
-			this.video.volume -= 0.1;
-		}
-	}
+MovieView.prototype.volumeUp = function(e){
+	ddp.call('volumeUp', function(err){
+		if (err) console.log(err);
+	});
+};
+
+MovieView.prototype.volumeDown = function(e){
+	ddp.call('volumeDown', function(err){
+		if (err) console.log(err);
+	});
 };
 
 MovieView.prototype.toggleSubtitles = function(){
@@ -22204,6 +22322,7 @@ MovieView.prototype.toggleSubtitles = function(){
 
 MovieView.prototype.forward = function(e){
 	e.preventDefault();
+	e.stopPropagation();
 	if (this.playbackDevice === 'local'){
 		if (!this.video) return;
 		this.video.currentTime = this.video.currentTime + 30;
@@ -22227,7 +22346,6 @@ MovieView.prototype.isPi = function(){
 };
 
 MovieView.prototype.isLocalAndStarted = function(){
-	console.log(!this.isPi(), this.started());
 	return (!this.isPi() && this.started());
 }
 
@@ -22255,6 +22373,7 @@ MovieView.prototype.playbackLocal = function(){
 		this.model.trigger('change:isPlaying', true);
 		dom('.zoom-background').addClass('fade');
 		this.video.play();
+		this.video.volume = Session.get('volume') / 10;
 		this.tempEvents = events(document, this);
 		this.tempEvents.bind('click', 'playbackLocal');
 	} else {
@@ -22269,14 +22388,12 @@ MovieView.prototype.notPlaying = function(){
 	return !this.isPlaying;
 };
 
-MovieView.prototype.isPlaying = function(){
-	return this.isPlaying;
-};
-
 MovieView.prototype.onpause = function(){
-	this.isPlaying = false;
-	this.model.trigger('change:isPlaying');
-	dom('.zoom-background').removeClass('fade');
+	if (this.playbackDevice !== 'raspberrypi'){
+		this.isPlaying = false;
+		this.model.trigger('change:isPlaying');
+		dom('.zoom-background').removeClass('fade');
+	}
 };
 
 MovieView.prototype.toggleFullscreen = function(e){
@@ -22290,26 +22407,29 @@ MovieView.prototype.toggleFullscreen = function(e){
 };
 
 MovieView.prototype.play = function(e){
-	e.preventDefault();
-	e.stopPropagation();
+	if (e) e.preventDefault();
+	if (e) e.stopPropagation();
 
 	if (this.playbackDevice !== 'raspberrypi') {
 		return this.playbackLocal();
 	}
 
 	if (this.isPlaying) {
-		// ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
-  //     console.log('pause video', err);
-  //   });
+		ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
+      console.log('pause video', err);
+    });
     this.isPlaying = false;
+    this.model.set('playback', 'paused');
     this.model.trigger('change:isPlaying');
 	} else {
 		var options = {};
-		options.currentTime = this.currentTime;
-		// ddp.call('playVideo', this.model.toJSON(), options, function(err, res){
-		// 	console.log('play video');
-		// });
+		options.currentTime = this.currentTime || 0;
+		options.volume = Session.get('tvVolume');
+		ddp.apply('playVideo', [this.model.toJSON(), options], function(err, res){
+			console.log('play video');
+		});
 		this.isPlaying = true;
+		this.model.set('playback', 'playing');
 		this.model.trigger('change:isPlaying');
 	}
 
@@ -22577,14 +22697,26 @@ require.register("current_playback/index.js", function(exports, require, module)
 var Session = require('session');
 var events = require('events');
 var dom = require('dom');
+var _ = require('underscore');
+var currentVideo = require('../collections/currently_playing');
 
-function CurrentlyPlayingView(movie){
-  this.movie = movie;
-  var icon = '<i class="icon-play"></i>';
-  var name = movie.get('title') || movie.get('file_name');
+var currentVideoView = new CurrentlyPlayingView();
+dom('#library-control').append(currentVideoView.$el);
+
+currentVideo.on('change', function(){
+  if (_.isEmpty(currentVideo.attributes)){
+    currentVideoView.hide();
+    return;
+  }
+  currentVideoView.render(currentVideo).show();
+});
+
+console.log('CURRENT VIDEO', currentVideo);
+
+function CurrentlyPlayingView(){
   this.$el = dom('<div></div>').id('currently-playing');
-  this.$el.html(icon + '<span class="movie-name">'+ name + '</span>');
-  this.bind();
+  this.events = events(this.$el.get(), this);
+  this.events.bind('click', 'showVideo');
 };
 
 CurrentlyPlayingView.prototype.show = function(){
@@ -22594,9 +22726,16 @@ CurrentlyPlayingView.prototype.show = function(){
   }, 0);
 };
 
-CurrentlyPlayingView.prototype.bind = function(){
-  this.events = events(this.$el.get(), this);
-  this.events.bind('click', 'showVideo');
+CurrentlyPlayingView.prototype.render = function(movie){
+  this.movie = movie;
+  var name = movie.get('title') || movie.get('file_name');
+  var icon = '<i class="icon-tv"></i>';
+  this.$el.html(icon);
+  return this;
+};
+
+CurrentlyPlayingView.prototype.hide = function(){
+  this.$el.removeClass('in');
 };
 
 CurrentlyPlayingView.prototype.close = function(){
@@ -22842,6 +22981,7 @@ var Session = require('session');
   var collection = require('collections');
 
   var updateStore = function(model){
+    console.log('updating store', model);
     Session.set('selected_movie', Session.get('selected_movie'), {
       silent: true
     });
@@ -22872,44 +23012,45 @@ var Session = require('session');
 
 })();
 
+require('current_playback');
 
 /////////////////////////////
 // Handle Current Playback //
 /////////////////////////////
 
-(function(){
+// (function(){
 
-  var CurrentlyPlayingView = require('current_playback');
-  var parent = document.getElementById('library-control');
-  var currentPlaybackView;
-  var collection = require('collections');
+//   var CurrentlyPlayingView = require('current_playback');
+//   var parent = document.getElementById('library-control');
+//   var currentPlaybackView;
+//   var collection = require('collections');
 
-  var updateStore = function(model){
-    Session.set('current_playback', Session.get('current_playback'), {
-      silent: true
-    });
-  }
+//   var updateStore = function(model){
+//     Session.set('current_playback', Session.get('current_playback'), {
+//       silent: true
+//     });
+//   }
 
-  function showPlay(val){
-    if (currentPlaybackView) currentPlaybackView.close();
-    if (val){
-      if (!(val instanceof Model)) {
-        collection.add(val);
-        val = collection.get(val._id);
-      }
-      val.isPlaying = true;
-      val.on('change', updateStore);
-      currentPlaybackView = new CurrentlyPlayingView(val);
-      parent.appendChild(currentPlaybackView.$el.get());
-      currentPlaybackView.show();
-    }
-  }
+//   function showPlay(val){
+//     if (currentPlaybackView) currentPlaybackView.close();
+//     if (val){
+//       if (!(val instanceof Model)) {
+//         collection.add(val);
+//         val = collection.get(val._id);
+//       }
+//       val.isPlaying = true;
+//       val.on('change', updateStore);
+//       currentPlaybackView = new CurrentlyPlayingView(val);
+//       parent.appendChild(currentPlaybackView.$el.get());
+//       currentPlaybackView.show();
+//     }
+//   }
 
-  Session.on('change:current_playback', showPlay);
-  var holdover = Session.get('current_playback');
-  if (holdover) showPlay(holdover);
+//   Session.on('change:current_playback', showPlay);
+//   var holdover = Session.get('current_playback');
+//   if (holdover) showPlay(holdover);
 
-})();
+// })();
 
 require('image_zoom');
 });
@@ -23179,8 +23320,11 @@ module.exports = 'li.label\n	span Movies';
 
 
 
+require.register("bmcmahen-slider/template.html", function(exports, require, module){
+module.exports = '<div class=\'slider\'>\n	<a href=\'#\' class=\'slider-min-value\'>0</a>\n	<div class=\'slider-range\'>\n		<input type=\'range\'/>\n	</div>\n	<a href=\'#\' class=\'slider-max-value\'>10</a>\n</div>';
+});
 require.register("movie/templates/playback.html", function(exports, require, module){
-module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>Pi</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isPi\' disable-if=\'notPlaying < isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-show=\'isPi\' disable-if=\'notPlaying < isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if=\'notPlaying <isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if=\'notPlaying < isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<button class=\'btn transparent\' disable-if=\'notPlaying < isPlaying\' on-click=\'volumeUp\'><i class=\'icon-volume-high\'></i></button>\n			<button class=\'btn transparent\' disable-if=\'notPlaying < isPlaying\' on-click=\'volumeDown\'><i class=\'icon-volume-low\'></i></button>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
+module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>Pi</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isPi\' disable-if=\'notPlaying < isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-show=\'isPi\' disable-if=\'notPlaying < isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if=\'notPlaying <isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if=\'notPlaying < isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<div class=\'slider volume\' disable-if=\'notPlaying < isPlaying\'>\n				<a href=\'#\' class=\'slider-min-value\'>\n					<i class=\'icon-volume-mute\'></i>\n				</a>\n				<div class=\'slider-range\'>\n					<input type=\'range\'/>\n				</div>\n				<a href=\'#\' class=\'slider-max-value\'>\n					<i class=\'icon-volume-high\'></i>\n				</a>\n			</div>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
 module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
@@ -23295,6 +23439,7 @@ require.alias("component-type/index.js", "component-each/deps/type/index.js");
 require.alias("sockets/index.js", "sockets/index.js");
 require.alias("collections/movies.js", "boot/deps/collections/movies.js");
 require.alias("collections/sources.js", "boot/deps/collections/sources.js");
+require.alias("collections/currently_playing.js", "boot/deps/collections/currently_playing.js");
 require.alias("collections/movies.js", "boot/deps/collections/index.js");
 require.alias("component-jquery/index.js", "collections/deps/jquery/index.js");
 
@@ -23578,6 +23723,7 @@ require.alias("component-type/index.js", "component-each/deps/type/index.js");
 require.alias("sockets/index.js", "sockets/index.js");
 require.alias("collections/movies.js", "sources/deps/collections/movies.js");
 require.alias("collections/sources.js", "sources/deps/collections/sources.js");
+require.alias("collections/currently_playing.js", "sources/deps/collections/currently_playing.js");
 require.alias("collections/movies.js", "sources/deps/collections/index.js");
 require.alias("component-jquery/index.js", "collections/deps/jquery/index.js");
 
@@ -23792,6 +23938,33 @@ require.alias("yields-prevent/index.js", "segmentio-toggle/deps/prevent/index.js
 
 require.alias("yields-stop/index.js", "segmentio-toggle/deps/stop/index.js");
 
+require.alias("bmcmahen-slider/index.js", "movie/deps/slider/index.js");
+require.alias("bmcmahen-slider/index.js", "movie/deps/slider/index.js");
+require.alias("component-classes/index.js", "bmcmahen-slider/deps/classes/index.js");
+require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
+
+require.alias("component-value/index.js", "bmcmahen-slider/deps/value/index.js");
+require.alias("component-value/index.js", "bmcmahen-slider/deps/value/index.js");
+require.alias("component-type/index.js", "component-value/deps/type/index.js");
+
+require.alias("component-value/index.js", "component-value/index.js");
+require.alias("component-emitter/index.js", "bmcmahen-slider/deps/emitter/index.js");
+require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
+
+require.alias("component-events/index.js", "bmcmahen-slider/deps/events/index.js");
+require.alias("component-event/index.js", "component-events/deps/event/index.js");
+
+require.alias("component-delegate/index.js", "component-events/deps/delegate/index.js");
+require.alias("component-matches-selector/index.js", "component-delegate/deps/matches-selector/index.js");
+require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
+
+require.alias("component-event/index.js", "component-delegate/deps/event/index.js");
+
+require.alias("component-domify/index.js", "bmcmahen-slider/deps/domify/index.js");
+
+require.alias("component-event/index.js", "bmcmahen-slider/deps/event/index.js");
+
+require.alias("bmcmahen-slider/index.js", "bmcmahen-slider/index.js");
 require.alias("movie/index.js", "movie/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
@@ -23915,6 +24088,8 @@ require.alias("component-matches-selector/index.js", "yields-traverse/deps/match
 require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
 
 require.alias("yields-traverse/index.js", "yields-traverse/index.js");
+require.alias("component-underscore/index.js", "current_playback/deps/underscore/index.js");
+
 require.alias("session/index.js", "current_playback/deps/session/index.js");
 require.alias("session/index.js", "current_playback/deps/session/index.js");
 require.alias("yields-store/index.js", "session/deps/store/index.js");

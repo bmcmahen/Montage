@@ -10,6 +10,7 @@ var EmitterManager = require('emitter-manager');
 var onload = require('onload');
 var fullscreen = require('fullscreen');
 var Toggle = require('toggle');
+var Slider = require('slider');
 
 Session.setDefault('playbackDevice', 'raspberrypi');
 
@@ -47,6 +48,7 @@ reactive.bind('disable-if', function(el, name){
 
 function TabView(movie, init){
 	this.init = init || 'playView';
+	console.log('MOVIE', movie.toJSON());
 	this.movie = movie;
 	this.$el = dom(require('./templates/container.html'));
 	this.el = this.$el.get();
@@ -132,7 +134,16 @@ function MovieView(movie){
 	this.model = movie;
 	this.$el = dom(require('./templates/playback.html'));
 	this.playbackDevice = Session.get('playbackDevice');
-	this.isPlaying = false;
+	console.log(this.playbackDevice);
+	if (this.playbackDevice === 'raspberrypi') {
+		if (this.model.get('playback') === 'playing') {
+			console.log('IS PLAYING');
+			this.isPlaying = true;
+		} else {
+			console.log('IS PAUSED');
+			this.isPlaying = false;
+		}
+	}
 	this.hasStarted = false;
 }
 
@@ -146,12 +157,29 @@ MovieView.prototype.render = function(){
 		? true : false;
 	this.toggle = new Toggle(null, toggleEl);
 	this.toggle.value(toggled);
+
+	var volEl = this.$el.find('.volume').get();
+	this.volume = new Slider(null, volEl)
+		.range(0, 10)
+		.step(1);
+
+
+	var volume = (this.playbackDevice === 'raspberrypi')
+		? Session.get('tvVolume')
+		: Session.get('volume');
+	this.volume.setValue(volume || 0);
 	this.bind();
 	return this;
 };
 
+MovieView.prototype.oncontrolclick = function(e){
+	e.stopPropagation();
+	e.preventDefault();
+};
+
 MovieView.prototype.bind = function(){
 	this.listenTo(this.toggle, 'change', this.togglePlayback);
+	this.listenTo(this.volume, 'change:value', this.changeVolume);
 };
 
 MovieView.prototype.togglePlayback = function(val){
@@ -162,11 +190,14 @@ MovieView.prototype.togglePlayback = function(val){
 	this.model.trigger('change:isPi');
 	if (this.video && this.playbackDevice === 'raspberrypi') {
 		this.currentTime = this.video.currentTime;
+		this.video.pause();
+		this.play();
 	}
 }
 
 MovieView.prototype.rewind = function(e){
 	e.preventDefault();
+	e.stopPropagation();
 	if (this.playbackDevice !== 'raspberrypi'){
 		if (!this.video) return;
 		this.video.currentTime = this.video.currentTime - 30;
@@ -181,28 +212,27 @@ MovieView.prototype.image_url = function(){
 	return '/movies/w342'+this.model.get('original_poster_path');;
 };
 
-MovieView.prototype.volumeUp = function(){
-	if (this.playbackDevice === 'raspberrypi'){
-		ddp.call('volumeUp', function(err){
-			if (err) console.log(err);
-		});
+MovieView.prototype.changeVolume = function(val, prev){
+	if (this.playbackDevice === 'raspberrypi') {
+		Session.set('tvVolume', val);
+		if (val > prev) this.volumeUp();
+		else this.volumeDown();
 	} else {
-		if (this.video) {
-			this.video.volume += 0.1;
-		}
+		Session.set('volume', val);
+		this.video.volume = (val / 10);
 	}
 };
 
-MovieView.prototype.volumeDown = function(){
-	if (this.playbackDevice === 'raspberrypi'){
-		ddp.call('volumeDown', function(err){
-			if (err) console.log(err);
-		});
-	} else {
-		if (this.video) {
-			this.video.volume -= 0.1;
-		}
-	}
+MovieView.prototype.volumeUp = function(e){
+	ddp.call('volumeUp', function(err){
+		if (err) console.log(err);
+	});
+};
+
+MovieView.prototype.volumeDown = function(e){
+	ddp.call('volumeDown', function(err){
+		if (err) console.log(err);
+	});
 };
 
 MovieView.prototype.toggleSubtitles = function(){
@@ -214,6 +244,7 @@ MovieView.prototype.toggleSubtitles = function(){
 
 MovieView.prototype.forward = function(e){
 	e.preventDefault();
+	e.stopPropagation();
 	if (this.playbackDevice === 'local'){
 		if (!this.video) return;
 		this.video.currentTime = this.video.currentTime + 30;
@@ -237,7 +268,6 @@ MovieView.prototype.isPi = function(){
 };
 
 MovieView.prototype.isLocalAndStarted = function(){
-	console.log(!this.isPi(), this.started());
 	return (!this.isPi() && this.started());
 }
 
@@ -265,6 +295,7 @@ MovieView.prototype.playbackLocal = function(){
 		this.model.trigger('change:isPlaying', true);
 		dom('.zoom-background').addClass('fade');
 		this.video.play();
+		this.video.volume = Session.get('volume') / 10;
 		this.tempEvents = events(document, this);
 		this.tempEvents.bind('click', 'playbackLocal');
 	} else {
@@ -279,14 +310,12 @@ MovieView.prototype.notPlaying = function(){
 	return !this.isPlaying;
 };
 
-MovieView.prototype.isPlaying = function(){
-	return this.isPlaying;
-};
-
 MovieView.prototype.onpause = function(){
-	this.isPlaying = false;
-	this.model.trigger('change:isPlaying');
-	dom('.zoom-background').removeClass('fade');
+	if (this.playbackDevice !== 'raspberrypi'){
+		this.isPlaying = false;
+		this.model.trigger('change:isPlaying');
+		dom('.zoom-background').removeClass('fade');
+	}
 };
 
 MovieView.prototype.toggleFullscreen = function(e){
@@ -300,26 +329,29 @@ MovieView.prototype.toggleFullscreen = function(e){
 };
 
 MovieView.prototype.play = function(e){
-	e.preventDefault();
-	e.stopPropagation();
+	if (e) e.preventDefault();
+	if (e) e.stopPropagation();
 
 	if (this.playbackDevice !== 'raspberrypi') {
 		return this.playbackLocal();
 	}
 
 	if (this.isPlaying) {
-		// ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
-  //     console.log('pause video', err);
-  //   });
+		ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
+      console.log('pause video', err);
+    });
     this.isPlaying = false;
+    this.model.set('playback', 'paused');
     this.model.trigger('change:isPlaying');
 	} else {
 		var options = {};
-		options.currentTime = this.currentTime;
-		// ddp.call('playVideo', this.model.toJSON(), options, function(err, res){
-		// 	console.log('play video');
-		// });
+		options.currentTime = this.currentTime || 0;
+		options.volume = Session.get('tvVolume');
+		ddp.apply('playVideo', [this.model.toJSON(), options], function(err, res){
+			console.log('play video');
+		});
 		this.isPlaying = true;
+		this.model.set('playback', 'playing');
 		this.model.trigger('change:isPlaying');
 	}
 

@@ -28,8 +28,8 @@ var ddp = new DDPServer(wss);
 
 app.use(require('./lib/playback/torrent'));
 app.use(express.logger('dev'));
-app.use(express.bodyParser());
-app.use(express.methodOverride());
+// app.use(express.bodyParser());
+// app.use(express.methodOverride());
 app.use(function(req, res, next){
 	// Use aggressive caching for our movie images, so that we touch the server
 	// as little as possible.

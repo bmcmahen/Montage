@@ -523,3 +523,37 @@ video {
 .controls i {
   font-size: 16px;
 }
+
+.slider input[type=range] {
+  padding: 0;
+  /*vertical-align: bottom;*/
+}
+
+.slider.volume a {
+  display: inline-block;
+  padding: 0 5px;
+  margin: 0;
+  margin-top: 8px;
+}
+
+.slider.volume a i {
+  padding: 0;
+}
+
+.slider {
+  width: 135px;
+  opacity: 1;
+  float: right;
+  transition: opacity 0.3s linear;
+  margin-right: 15px;
+}
+
+.slider.disabled {
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+.slider .slider-min-value,
+.slider .slider-max-value {
+  width: 15px;
+}

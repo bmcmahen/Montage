@@ -19,6 +19,7 @@ function Subscriptions(){
 	});
 
 	ddp.on('changed', function(data){
+		console.log('changed', data);
 		self.emit(data.collection + ':changed', data.fields);
 	});
 
@@ -32,6 +33,7 @@ Emitter(Subscriptions.prototype);
 ddp.on('connected', function(){
 	ddp.subscribe('movies');
 	ddp.subscribe('sources');
+	ddp.subscribe('currentlyPlaying');
 	ddp.isReady = true;
 });
 

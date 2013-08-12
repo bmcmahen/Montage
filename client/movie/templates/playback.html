@@ -18,7 +18,7 @@
 		</div>
 	</div>
 
-	<div class='segment white clearfix'>
+	<div class='segment white clearfix' on-click='oncontrolclick'>
 		<div class='controls pre'>
 			<button class='btn transparent' data-hide='isPi' disable-if='notPlaying < isPlaying' on-click='toggleFullscreen'> Fullscreen </button>
 			<button class='btn transparent' data-show='isPi' disable-if='notPlaying < isPlaying' on-click='toggleSubtitles'> Subtitles </button>
@@ -37,8 +37,17 @@
 			</a>
 		</div>
 		<div class='controls post'>
-			<button class='btn transparent' disable-if='notPlaying < isPlaying' on-click='volumeUp'><i class='icon-volume-high'></i></button>
-			<button class='btn transparent' disable-if='notPlaying < isPlaying' on-click='volumeDown'><i class='icon-volume-low'></i></button>
+			<div class='slider volume' disable-if='notPlaying < isPlaying'>
+				<a href='#' class='slider-min-value'>
+					<i class='icon-volume-mute'></i>
+				</a>
+				<div class='slider-range'>
+					<input type='range'/>
+				</div>
+				<a href='#' class='slider-max-value'>
+					<i class='icon-volume-high'></i>
+				</a>
+			</div>
 		</div>
 
 

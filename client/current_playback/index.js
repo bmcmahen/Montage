@@ -1,14 +1,26 @@
 var Session = require('session');
 var events = require('events');
 var dom = require('dom');
+var _ = require('underscore');
+var currentVideo = require('../collections/currently_playing');
 
-function CurrentlyPlayingView(movie){
-  this.movie = movie;
-  var icon = '<i class="icon-play"></i>';
-  var name = movie.get('title') || movie.get('file_name');
+var currentVideoView = new CurrentlyPlayingView();
+dom('#library-control').append(currentVideoView.$el);
+
+currentVideo.on('change', function(){
+  if (_.isEmpty(currentVideo.attributes)){
+    currentVideoView.hide();
+    return;
+  }
+  currentVideoView.render(currentVideo).show();
+});
+
+console.log('CURRENT VIDEO', currentVideo);
+
+function CurrentlyPlayingView(){
   this.$el = dom('<div></div>').id('currently-playing');
-  this.$el.html(icon + '<span class="movie-name">'+ name + '</span>');
-  this.bind();
+  this.events = events(this.$el.get(), this);
+  this.events.bind('click', 'showVideo');
 };
 
 CurrentlyPlayingView.prototype.show = function(){
@@ -18,9 +30,16 @@ CurrentlyPlayingView.prototype.show = function(){
   }, 0);
 };
 
-CurrentlyPlayingView.prototype.bind = function(){
-  this.events = events(this.$el.get(), this);
-  this.events.bind('click', 'showVideo');
+CurrentlyPlayingView.prototype.render = function(movie){
+  this.movie = movie;
+  var name = movie.get('title') || movie.get('file_name');
+  var icon = '<i class="icon-tv"></i>';
+  this.$el.html(icon);
+  return this;
+};
+
+CurrentlyPlayingView.prototype.hide = function(){
+  this.$el.removeClass('in');
 };
 
 CurrentlyPlayingView.prototype.close = function(){

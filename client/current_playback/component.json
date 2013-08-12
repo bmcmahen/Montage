@@ -3,7 +3,8 @@
   "description": "top right playback indicator",
   "dependencies": {
     "component/events": "1.0.4",
-    "component/dom" : "*"
+    "component/dom" : "*",
+    "component/underscore": "*"
   },
   "development": {},
   "main": "index.js",

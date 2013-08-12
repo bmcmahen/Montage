@@ -1,8 +1,6 @@
 #currently-playing {
 	padding: 5px 8px;
-	background: #5cb85c;
-	color: white;
-	width: 120px;
+	color: rgb(107, 107, 107);
 	margin: 7px;
 	position: absolute;
 	top: 0;
@@ -16,8 +14,20 @@
 	visibility: hidden;
 }
 
+#currently-playing span {
+	margin-top: 5px;
+	width: 115px;
+	display: inline-block;
+	padding-left: 8px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+	text-align: left;
+}
+
 #currently-playing:active {
 	background: #333;
+	color: white;
 }
 
 #currently-playing.in {
@@ -26,10 +36,8 @@
 	transition: transform 0.4s ease-out;
 }
 
-#currently-playing .icon-play {
-	font-size: 17px;
-	margin-right: 0;
+#currently-playing .icon-tv {
+	font-size: 22px;
 	float: left;
-	display: block;
 	vertical-align: bottom;
 }
