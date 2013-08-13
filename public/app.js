@@ -17985,6 +17985,65 @@ BackgroundZoom.prototype.target = function(x, y, w, h){
   return this;
 }
 });
+require.register("bmcmahen-hold/index.js", function(exports, require, module){
+var events = require('events');
+
+module.exports = Hold;
+
+/**
+ * Hold Constructor
+ * @param {DOM}   el
+ * @param {Function} fn
+ */
+
+function Hold(el, fn){
+  if (!(this instanceof Hold)) return new Hold(el, fn);
+  this.el = el;
+  this.fn = fn || function() {};
+  this.events = events(this.el, this);
+  this.events.bind('mousedown', 'ontouchstart');
+  this.events.bind('mouseup', 'ontouchend');
+  this.events.bind('touchstart');
+  this.events.bind('touchend');
+}
+
+// consider making 'touchleave' its own module.
+Hold.prototype.bindLeave = function(){
+  this.events.bind('mouseout', 'ontouchend');
+  this.events.bind('touchmove');
+};
+
+Hold.prototype.unbindLeave = function(){
+  this.events.unbind('mouseleave', 'ontouchend');
+  this.events.unbind('touchmove');
+}
+
+Hold.prototype.ontouchmove = function(e){
+  var touch = e.touches[0];
+  var element = document.elementFromPoint(touch.pageX, touch.pageY);
+  if (element !== this.el) {
+    this.ontouchend();
+  }
+};
+
+Hold.prototype.ontouchstart = function(e){
+  e.preventDefault();
+  this.bindLeave();
+  var self = this;
+  this.timeout = setTimeout(function(){
+    self.fn(e);
+  }, 800);
+};
+
+Hold.prototype.ontouchend = function(e){
+  clearTimeout(this.timeout);
+  this.unbindLeave();
+};
+
+Hold.prototype.unbind = function(){
+  this.events.unbind();
+};
+});
 require.register("library/index.js", function(exports, require, module){
 var swipe = require('swipe');
 var collection = require('../collections/movies');
@@ -18003,6 +18062,7 @@ var Progress = require('progress');
 var Hammer = require('hammer');
 var addEvent = require('event');
 var BackgroundZoom = require('background-zoom');
+var hold = require('hold');
 
 var Chunk = require('./chunks').Chunk;
 var ChunkCollection = require('./chunks').ChunkCollection;
@@ -18659,14 +18719,18 @@ MovieItem.prototype.bind = function(){
   }
   this.events = events(this.$el, this);
   this.events.bind('click', 'selectMovie');
-  this.hammer = new Hammer(this.$el);
-  var self = this;
-  this.hammer.onhold = function(e){
-    e.originalEvent.preventDefault();
-    e.originalEvent.stopPropagation();
+  hold(this.$el, function(e){
     self.holding = true;
     self.enterEditMode();
-  }
+  });
+  // this.hammer = new Hammer(this.$el);
+  // var self = this;
+  // this.hammer.onhold = function(e){
+  //   e.originalEvent.preventDefault();
+  //   e.originalEvent.stopPropagation();
+  //   self.holding = true;
+  //   self.enterEditMode();
+  // }
 };
 
 MovieItem.prototype.deleteMovie = function(e){
@@ -18738,7 +18802,7 @@ MovieItem.prototype.changePoster = function(){
 };
 
 MovieItem.prototype.selectMovie = function(e){
-  e.preventDefault();
+  // e.preventDefault();
   e.stopPropagation();
   if (this.holding){
     this.holding = false;
@@ -22090,35 +22154,10 @@ var fullscreen = require('fullscreen');
 var Toggle = require('toggle');
 var Slider = require('slider');
 
-Session.setDefault('playbackDevice', 'raspberrypi');
+// Session.setDefault('playbackDevice', 'raspberrypi');
 
-/////////////////////////////////
-// Adapt Reactive to Backbone  //
-/////////////////////////////////
 
-reactive.get(function(obj, prop) {
-  return obj.get(prop);
-});
-
-reactive.set(function(obj, prop, val) {
-  obj.set(prop, val);
-});
-
-reactive.subscribe(function(obj, prop, fn){
-  obj.bind('change:'+ prop, fn);
-});
-
-reactive.unsubscribe(function(obj, prop, fn){
-  obj.unbind('change:'+ prop, fn);
-});
-
-reactive.bind('disable-if', function(el, name){
-	var $el = dom(el);
-	this.change(function(){
-		if (this.value(name)) $el.addClass('disabled');
-		else $el.removeClass('disabled');
-	});
-});
+var Playback = require('./playback');
 
 /////////////////////////
 // Tab View for Movie  //
@@ -22126,7 +22165,6 @@ reactive.bind('disable-if', function(el, name){
 
 function TabView(movie, init){
 	this.init = init || 'playView';
-	console.log('MOVIE', movie.toJSON());
 	this.movie = movie;
 	this.$el = dom(require('./templates/container.html'));
 	this.el = this.$el.get();
@@ -22181,8 +22219,8 @@ TabView.prototype.playView = function(e){
 	this.setActive(this.$el.find('#tab-one'));
 	this.$content
 		.empty()
-		.append(new MovieView(this.movie).render().$el);
-
+		.append(new Playback(this.movie).$el);
+		console.log('play view render');
 	var img = this.$content.find('img').get();
 	if (img) onload(img);
 };
@@ -22203,242 +22241,6 @@ TabView.prototype.subtitleView = function(e){
 		.append('subtitle view');
 };
 
-
-/////////////////////////
-// Movie Playback View //
-/////////////////////////
-
-function MovieView(movie){
-	this.model = movie;
-	this.$el = dom(require('./templates/playback.html'));
-	this.playbackDevice = Session.get('playbackDevice');
-	console.log(this.playbackDevice);
-	if (this.playbackDevice === 'raspberrypi') {
-		if (this.model.get('playback') === 'playing') {
-			console.log('IS PLAYING');
-			this.isPlaying = true;
-		} else {
-			console.log('IS PAUSED');
-			this.isPlaying = false;
-		}
-	}
-	this.hasStarted = false;
-}
-
-EmitterManager(MovieView.prototype);
-
-
-MovieView.prototype.render = function(){
-	reactive(this.$el.get(), this.model, this);
-	var toggleEl = this.$el.find('.toggle').get();
-	var toggled = (this.playbackDevice === 'raspberrypi')
-		? true : false;
-	this.toggle = new Toggle(null, toggleEl);
-	this.toggle.value(toggled);
-
-	var volEl = this.$el.find('.volume').get();
-	this.volume = new Slider(null, volEl)
-		.range(0, 10)
-		.step(1);
-
-
-	var volume = (this.playbackDevice === 'raspberrypi')
-		? Session.get('tvVolume')
-		: Session.get('volume');
-	this.volume.setValue(volume || 0);
-	this.bind();
-	return this;
-};
-
-MovieView.prototype.oncontrolclick = function(e){
-	e.stopPropagation();
-	e.preventDefault();
-};
-
-MovieView.prototype.bind = function(){
-	this.listenTo(this.toggle, 'change', this.togglePlayback);
-	this.listenTo(this.volume, 'change:value', this.changeVolume);
-};
-
-MovieView.prototype.togglePlayback = function(val){
-	// on = raspberrypi
-	// off = currentDevice
-	this.playbackDevice = val ? 'raspberrypi' : 'local';
-	Session.set('playbackDevice', this.playbackDevice);
-	this.model.trigger('change:isPi');
-	if (this.video && this.playbackDevice === 'raspberrypi') {
-		this.currentTime = this.video.currentTime;
-		this.video.pause();
-		this.play();
-	}
-}
-
-MovieView.prototype.rewind = function(e){
-	e.preventDefault();
-	e.stopPropagation();
-	if (this.playbackDevice !== 'raspberrypi'){
-		if (!this.video) return;
-		this.video.currentTime = this.video.currentTime - 30;
-	} else {
-		ddp.call('backwardVideo', this.model.toJSON(), function(err, res){
-			console.log(err, res);
-		});
-	}
-};
-
-MovieView.prototype.image_url = function(){
-	return '/movies/w342'+this.model.get('original_poster_path');;
-};
-
-MovieView.prototype.changeVolume = function(val, prev){
-	if (this.playbackDevice === 'raspberrypi') {
-		Session.set('tvVolume', val);
-		if (val > prev) this.volumeUp();
-		else this.volumeDown();
-	} else {
-		Session.set('volume', val);
-		this.video.volume = (val / 10);
-	}
-};
-
-MovieView.prototype.volumeUp = function(e){
-	ddp.call('volumeUp', function(err){
-		if (err) console.log(err);
-	});
-};
-
-MovieView.prototype.volumeDown = function(e){
-	ddp.call('volumeDown', function(err){
-		if (err) console.log(err);
-	});
-};
-
-MovieView.prototype.toggleSubtitles = function(){
-	ddp.call('toggleSubtitles', function(err){
-		if (err) console.log(err);
-	});
-};
-
-
-MovieView.prototype.forward = function(e){
-	e.preventDefault();
-	e.stopPropagation();
-	if (this.playbackDevice === 'local'){
-		if (!this.video) return;
-		this.video.currentTime = this.video.currentTime + 30;
-	} else {
-		ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
-			console.log('froward result.')
-		});
-	}
-};
-
-MovieView.prototype.isPlaying = function(){
-	return this.isPlaying;
-};
-
-MovieView.prototype.started = function(){
-	return this.hasStarted;
-};
-
-MovieView.prototype.isPi = function(){
-	return (this.playbackDevice === 'raspberrypi');
-};
-
-MovieView.prototype.isLocalAndStarted = function(){
-	return (!this.isPi() && this.started());
-}
-
-MovieView.prototype.playbackLocal = function(){
-	if (!this.isPlaying){
-		if (!this.video){
-			var $video = dom('<video></video>');
-			var src = this.model.get('torrent')
-				? '/stream/'
-				: '/videos/';
-
-			$video.src(src + this.model.id);
-			this.$el
-				.find('#main-playback')
-				.empty()
-				.addClass('video')
-				.append($video);
-			this.video = $video.get();
-			this.videoEvents = events(this.video, this);
-			this.videoEvents.bind('pause', 'onpause');
-			this.videoEvents.bind('error', 'onpause');
-			this.videoEvents.bind('ended', 'onpause');
-		}
-		this.isPlaying = true;
-		this.model.trigger('change:isPlaying', true);
-		dom('.zoom-background').addClass('fade');
-		this.video.play();
-		this.video.volume = Session.get('volume') / 10;
-		this.tempEvents = events(document, this);
-		this.tempEvents.bind('click', 'playbackLocal');
-	} else {
-		this.isPlaying = false;
-		this.model.trigger('change:isPlaying', false);
-		this.tempEvents.unbind();
-		this.video.pause();
-	}
-};
-
-MovieView.prototype.notPlaying = function(){
-	return !this.isPlaying;
-};
-
-MovieView.prototype.onpause = function(){
-	if (this.playbackDevice !== 'raspberrypi'){
-		this.isPlaying = false;
-		this.model.trigger('change:isPlaying');
-		dom('.zoom-background').removeClass('fade');
-	}
-};
-
-MovieView.prototype.toggleFullscreen = function(e){
-	e.stopPropagation();
-	if (this.video) {
-		if (this.video.webkitEnterFullscreen)
-			this.video.webkitEnterFullscreen();
-		else
-			fullscreen(this.video);
-	}
-};
-
-MovieView.prototype.play = function(e){
-	if (e) e.preventDefault();
-	if (e) e.stopPropagation();
-
-	if (this.playbackDevice !== 'raspberrypi') {
-		return this.playbackLocal();
-	}
-
-	if (this.isPlaying) {
-		ddp.call('pauseVideo', this.model.toJSON(), function(err, res){
-      console.log('pause video', err);
-    });
-    this.isPlaying = false;
-    this.model.set('playback', 'paused');
-    this.model.trigger('change:isPlaying');
-	} else {
-		var options = {};
-		options.currentTime = this.currentTime || 0;
-		options.volume = Session.get('tvVolume');
-		ddp.apply('playVideo', [this.model.toJSON(), options], function(err, res){
-			console.log('play video');
-		});
-		this.isPlaying = true;
-		this.model.set('playback', 'playing');
-		this.model.trigger('change:isPlaying');
-	}
-
-};
-
-MovieView.prototype.close = function(){
-	this.$el.remove();
-	if (this.videoEvents) this.videoEvents.unbind();
-};
 
 //////////////////////
 // Edit Movie Meta  //
@@ -22523,6 +22325,305 @@ function SearchResult(model, json){
     }
   }
 }
+
+
+});
+require.register("movie/playback.js", function(exports, require, module){
+var dom = require('dom');
+var events = require('events');
+var reactive = require('reactive');
+var fullscreen = require('fullscreen');
+var Toggle = require('toggle');
+var Slider = require('slider');
+var EmitterManager = require('emitter-manager');
+var Model = require('backbone').Model;
+
+var session = require('../session');
+var ddp = require('../sockets').ddp;
+
+/////////////////////////////////
+// Playback Session Variables  //
+/////////////////////////////////
+
+session.setDefault('playbackDevice', 'tv');
+session.setDefault('volume', 3);
+session.setDefault('tvVolume', 3);
+
+/////////////////////////////////
+// Adapt Reactive to Backbone  //
+/////////////////////////////////
+
+reactive.get(function(obj, prop) {
+  return obj.get(prop);
+});
+
+reactive.set(function(obj, prop, val) {
+  obj.set(prop, val);
+});
+
+reactive.subscribe(function(obj, prop, fn){
+  obj.bind('change:'+ prop, fn);
+});
+
+reactive.unsubscribe(function(obj, prop, fn){
+  obj.unbind('change:'+ prop, fn);
+});
+
+reactive.bind('disable-if', function(el, name){
+	var $el = dom(el);
+	this.change(function(){
+		if (this.value(name)) $el.addClass('disabled');
+		else $el.removeClass('disabled');
+	});
+});
+
+reactive.bind('disable-if-not', function(el, name){
+	var $el = dom(el);
+	this.change(function(){
+		if (this.value(name)) $el.removeClass('disabled');
+		else $el.addClass('disabled');
+	});
+});
+
+
+
+/////////////////////
+// Playback Model  //
+/////////////////////
+
+var PlaybackModel = Model.extend({
+
+	defaults: function(){
+		this.set('isTV', session.get('playbackDevice') === 'tv');
+		this.set('isLocal', !this.get('isTV'));
+		this.set('isPlaying', false);
+	},
+
+	initialize: function(attr, movie){
+		this.movie = movie;
+		this.listenTo(session, 'change:playbackDevice', this.setDevice.bind(this));
+		this.listenTo(movie, 'change:playback', this.setPlayback);
+		if (movie.get('playback') === 'playing') {
+			if (this.get('isTV')) {
+				this.set('isPlaying', true);
+			}
+		}
+	},
+
+	setDevice: function(){
+		if (session.get('playbackDevice') === 'tv') {
+			this.set('isTV', true);
+			this.set('isLocal', false);
+		} else {
+			this.set('isTV', false);
+			this.set('isLocal', true);
+		}
+	},
+
+	setPlayback: function(){
+		if (this.get('isTV')) {
+			var pb = this.movie.get('playback');
+			if (pb === 'playing') this.set('isPlaying', true);
+			else this.set('isPlaying', false);
+		}
+	}
+
+
+});
+
+//////////////////////////
+// Playback Controller  //
+//////////////////////////
+
+module.exports = Playback;
+
+function Playback(movie){
+	this.movie = movie;
+	this.model = new PlaybackModel(null, movie);
+
+	// Our playback wrapper/template
+	this.$el = dom(require('./templates/playback.html'));
+	this.reactive = reactive(this.$el.get(), this.model, this);
+
+	// Our meta template
+	this.$metaEl = dom(require('./templates/movieinfo.html'));
+	this.reactiveMeta = reactive(this.$metaEl.get(), this.movie, this);
+	this.$el.find('#main-playback').empty().append(this.$metaEl);
+
+	this.createToggle();
+	this.createVolume();
+	this.listen();
+}
+
+EmitterManager(Playback.prototype);
+
+Playback.prototype.listen = function(){
+	this.listenTo(this.toggle, 'change', this.togglePlayback);
+	this.listenTo(this.volume, 'change:value', this.setVolume);
+}
+
+Playback.prototype.createToggle = function(){
+	var el = this.$el.find('.toggle').get();
+	this.toggle = new Toggle(null, el);
+
+	// set our initial value.
+	this.toggle.value(session.get('playbackDevice') === 'tv');
+};
+
+Playback.prototype.togglePlayback = function(){
+	var otherDevice = (session.get('playbackDevice') === 'tv')
+		? 'local'
+		: 'tv';
+	session.set('playbackDevice', otherDevice);
+
+	// When switchin from Local to TV, make sure that our
+	// play button is set to the correct state, and reset
+	// our volume to the TV volume level. Also, make sure
+	// that our local video (if it exists) is paused.
+	if (otherDevice === 'tv'){
+		if (this.video) this.video.pause();
+		if (this.movie.get('playback') === 'playing') {
+			this.model.set('isPlaying', true);
+		} else {
+			this.model.set('isPlaying', false);
+		}
+		this.volume.setValue(session.get('tvVolume'));
+
+	// When switching from TV to Local, make sure
+	// that our play button is paused. Also, switch our
+	// volume indicator to Local volume.
+	} else {
+		this.model.set('isPlaying', false);
+		this.volume.setValue(session.get('volume'));
+	}
+};
+
+Playback.prototype.createVolume = function(){
+	var el = this.$el.find('.volume').get();
+	this.volume = new Slider(null, el)
+		.range(0, 10)
+		.step(1);
+
+	// set our initial value.
+	var val = (session.get('playbackDevice') === 'tv')
+		? session.get('tvVolume')
+		: session.get('volume');
+
+	this.volume.setValue(val);
+};
+
+Playback.prototype.setVolume = function(val, prev){
+	if (session.get('playbackDevice') === 'tv') {
+		session.set('tvVolume', val);
+		if (val > prev) ddp.call('volumeUp');
+		else ddp.call('volumeDown');
+	} else {
+		session.set('volume', val);
+		this.video.volume = (val / 10);
+	}
+};
+
+Playback.prototype.oncontrolclick = function(e){
+	e.stopPropagation();
+	e.preventDefault();
+};
+
+Playback.prototype.toggleSubtitles = function(){
+	ddp.call('toggleSubtitles');
+};
+
+Playback.prototype.forward = function(e){
+	e.preventDefault();
+	e.stopPropagation();
+	if (session.get('playbackDevice') === 'local'){
+		if (!this.video) return;
+		this.video.currentTime = this.video.currentTime + 30;
+	} else {
+		ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
+			console.log('froward result.')
+		});
+	}
+};
+
+Playback.prototype.toggleFullscreen = function(e){
+	e.stopPropagation();
+	if (this.video) {
+		if (this.video.webkitEnterFullscreen) this.video.webkitEnterFullscreen();
+		else fullscreen(this.video);
+	}
+};
+
+Playback.prototype.play = function(e){
+	if (session.get('playbackDevice') === 'tv') this.toggleTVPlayback();
+	else this.toggleLocalPlayback();
+};
+
+Playback.prototype.toggleTVPlayback = function(){
+	if (this.model.get('isPlaying')) {
+		this.movie.set('playback', 'paused');
+		ddp.call('pauseVideo', this.movie.toJSON(), function(err){
+			if (err) console.log(err);
+		});
+	} else {
+		var options = {};
+		options.currentTime = this.model.get('currentTime');
+		options.volume = session.get('tvVolume');
+		this.movie.set('playback', 'playing');
+		ddp.apply('playVideo', [this.movie.toJSON(), options], function(err){
+			if (err) console.log(err);
+		});
+	}
+};
+
+Playback.prototype.toggleLocalPlayback = function(){
+	if (!this.model.get('isPlaying')) {
+		if (!this.video){
+			var $video = dom('<video></video>');
+			var src = this.movie.get('torrent')
+				? '/stream/'
+				: '/videos/';
+
+			$video.src(src + this.movie.id);
+			this.$el
+				.find('#main-playback')
+				.empty()
+				.addClass('video')
+				.append($video);
+			this.video = $video.get();
+			this.videoEvents = events(this.video, this);
+			this.videoEvents.bind('pause', 'onpause');
+			this.videoEvents.bind('error', 'onpause');
+			this.videoEvents.bind('ended', 'onpause');
+		}
+		this.model.set('isPlaying', true);
+		dom('.zoom-background').addClass('fade');
+		this.video.play();
+		this.setVolume(session.get('volume'));
+		this.tempEvents = events(document, this);
+		this.tempEvents.bind('click', 'toggleLocalPlayback');
+	} else {
+		this.model.set('isPlaying', false);
+		this.tempEvents.unbind();
+		this.video.pause();
+	}
+};
+
+Playback.prototype.onpause = function(){
+	if (session.get('playbackDevice') === 'local') {
+		this.model.set('isPlaying', false);
+		dom('.zoom-background').removeClass('fade');
+	}
+};
+
+Playback.prototype.image_url = function(){
+	return '/movies/w342' + this.movie.get('original_poster_path');;
+};
+
+Playback.prototype.close = function(){
+	this.$el.remove();
+	if (this.videoEvents) this.videoEvents.unbind();
+	this.stopListening();
+};
 
 
 });
@@ -23267,6 +23368,7 @@ exports.rethrow = function rethrow(err, filename, lineno){
 
 
 
+
 require.register("library/templates/movie.jade", function(exports, require, module){
 module.exports = 'if locals.original_poster_path\n	.images\n		i.icon-close\n		.img-container\n			if locals.is_phone\n				img(src=image_path + locals.original_poster_path, width=\'85\', height=\'122\')\n			else\n				img(src=image_path + locals.original_poster_path, width=\'130\', height=\'195\')\n	p.name=locals.title\n	if locals.runtime\n		p.meta=locals.runtime + \' Minutes\'\nelse\n	.image-placeholder.images\n		i.icon-close\n		.img-container\n			i.icon-question\n	p.name=locals.title || locals.file_name';
 });
@@ -23324,7 +23426,7 @@ require.register("bmcmahen-slider/template.html", function(exports, require, mod
 module.exports = '<div class=\'slider\'>\n	<a href=\'#\' class=\'slider-min-value\'>0</a>\n	<div class=\'slider-range\'>\n		<input type=\'range\'/>\n	</div>\n	<a href=\'#\' class=\'slider-max-value\'>10</a>\n</div>';
 });
 require.register("movie/templates/playback.html", function(exports, require, module){
-module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>Pi</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div class=\'poster\'>\n			<div id=\'poster-image\'>\n				<img data-src=\'image_url < poster\'></img>\n			</div>\n		</div>\n		<div class=\'movie-info\'>\n			<h2> { title || file_name }</h2>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isPi\' disable-if=\'notPlaying < isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-show=\'isPi\' disable-if=\'notPlaying < isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if=\'notPlaying <isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if=\'notPlaying < isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<div class=\'slider volume\' disable-if=\'notPlaying < isPlaying\'>\n				<a href=\'#\' class=\'slider-min-value\'>\n					<i class=\'icon-volume-mute\'></i>\n				</a>\n				<div class=\'slider-range\'>\n					<input type=\'range\'/>\n				</div>\n				<a href=\'#\' class=\'slider-max-value\'>\n					<i class=\'icon-volume-high\'></i>\n				</a>\n			</div>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
+module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>Pi</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<div class=\'slider volume\' disable-if-not=\'isPlaying\'>\n				<a href=\'#\' class=\'slider-min-value\'>\n					<i class=\'icon-volume-mute\'></i>\n				</a>\n				<div class=\'slider-range\'>\n					<input type=\'range\'/>\n				</div>\n				<a href=\'#\' class=\'slider-max-value\'>\n					<i class=\'icon-volume-high\'></i>\n				</a>\n			</div>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
 module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
@@ -23334,6 +23436,9 @@ module.exports = 'li.list-group-item\n	a=locals.title + \' [\'+locals.release_da
 });
 require.register("movie/templates/meta.html", function(exports, require, module){
 module.exports = '<div class=\'span6 offset3\'>\n	<div class=\'row\'>\n		<div class=\'span12 center-text\'>\n			<form id=\'meta-search\' class=\'inline-block inline\'>\n				<input type=\'text\' class=\'search-title\' placeholder=\'Movie Title\'><input type=\'submit\' value=\'Find Movie\'>\n			</form>\n		</div>\n	</div>\n	<div class=\'row\'>\n		<div class=\'span10 offset1\'>\n			<i class=\'loader light\'></i>\n			<ul id=\'search-results\' class=\'list-group\'>\n			</ul>\n		</div>\n	</div>';
+});
+require.register("movie/templates/movieinfo.html", function(exports, require, module){
+module.exports = '<div class=\'poster\'>\n	<div id=\'poster-image\'>\n		<img data-src=\'image_url < original_poster_path\'></img>\n	</div>\n</div>\n<div class=\'movie-info\'>\n	<h2> { title || file_name }</h2>\n</div>';
 });
 
 require.register("modal/templates/torrent.jade", function(exports, require, module){
@@ -23573,6 +23678,18 @@ require.alias("component-indexof/index.js", "component-classes/deps/indexof/inde
 require.alias("component-transform-property/index.js", "bmcmahen-background-zoom/deps/transform-property/index.js");
 
 require.alias("bmcmahen-background-zoom/index.js", "bmcmahen-background-zoom/index.js");
+require.alias("bmcmahen-hold/index.js", "library/deps/hold/index.js");
+require.alias("bmcmahen-hold/index.js", "library/deps/hold/index.js");
+require.alias("component-events/index.js", "bmcmahen-hold/deps/events/index.js");
+require.alias("component-event/index.js", "component-events/deps/event/index.js");
+
+require.alias("component-delegate/index.js", "component-events/deps/delegate/index.js");
+require.alias("component-matches-selector/index.js", "component-delegate/deps/matches-selector/index.js");
+require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
+
+require.alias("component-event/index.js", "component-delegate/deps/event/index.js");
+
+require.alias("bmcmahen-hold/index.js", "bmcmahen-hold/index.js");
 require.alias("sockets/index.js", "library/deps/sockets/index.js");
 require.alias("sockets/index.js", "library/deps/sockets/index.js");
 require.alias("component-emitter/index.js", "sockets/deps/emitter/index.js");
@@ -23819,6 +23936,7 @@ require.alias("bmcmahen-session-variables/index.js", "bmcmahen-session-variables
 require.alias("session/index.js", "session/index.js");
 require.alias("drawer/index.js", "drawer/index.js");
 require.alias("movie/index.js", "boot/deps/movie/index.js");
+require.alias("movie/playback.js", "boot/deps/movie/playback.js");
 require.alias("movie/index.js", "boot/deps/movie/index.js");
 require.alias("component-onload/index.js", "movie/deps/onload/index.js");
 require.alias("component-classes/index.js", "component-onload/deps/classes/index.js");
@@ -23965,6 +24083,12 @@ require.alias("component-domify/index.js", "bmcmahen-slider/deps/domify/index.js
 require.alias("component-event/index.js", "bmcmahen-slider/deps/event/index.js");
 
 require.alias("bmcmahen-slider/index.js", "bmcmahen-slider/index.js");
+require.alias("bmcmahen-backbone/index.js", "movie/deps/backbone/index.js");
+require.alias("bmcmahen-backbone/backbone.js", "movie/deps/backbone/backbone.js");
+require.alias("component-underscore/index.js", "bmcmahen-backbone/deps/underscore/index.js");
+
+require.alias("component-jquery/index.js", "bmcmahen-backbone/deps/jquery/index.js");
+
 require.alias("movie/index.js", "movie/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");

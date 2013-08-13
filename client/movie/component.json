@@ -11,12 +11,14 @@
     "component/dom": "*",
     "component/fullscreen": "1.0.0",
     "segmentio/toggle": "*",
-    "bmcmahen/slider": "*"
+    "bmcmahen/slider": "*",
+    "bmcmahen/backbone": "*"
   },
   "license": "MIT",
   "main": "index.js",
   "scripts": [
-    "index.js"
+    "index.js",
+    "playback.js"
   ],
   "styles": [
     "index.styl",
@@ -30,6 +32,7 @@
     "templates/playback.html",
     "templates/container.html",
     "templates/meta-search-result.jade",
-    "templates/meta.html"
+    "templates/meta.html",
+    "templates/movieinfo.html"
   ]
 }

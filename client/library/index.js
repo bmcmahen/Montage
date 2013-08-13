@@ -15,6 +15,7 @@ var Progress = require('progress');
 var Hammer = require('hammer');
 var addEvent = require('event');
 var BackgroundZoom = require('background-zoom');
+var hold = require('hold');
 
 var Chunk = require('./chunks').Chunk;
 var ChunkCollection = require('./chunks').ChunkCollection;
@@ -671,14 +672,18 @@ MovieItem.prototype.bind = function(){
   }
   this.events = events(this.$el, this);
   this.events.bind('click', 'selectMovie');
-  this.hammer = new Hammer(this.$el);
-  var self = this;
-  this.hammer.onhold = function(e){
-    e.originalEvent.preventDefault();
-    e.originalEvent.stopPropagation();
+  hold(this.$el, function(e){
     self.holding = true;
     self.enterEditMode();
-  }
+  });
+  // this.hammer = new Hammer(this.$el);
+  // var self = this;
+  // this.hammer.onhold = function(e){
+  //   e.originalEvent.preventDefault();
+  //   e.originalEvent.stopPropagation();
+  //   self.holding = true;
+  //   self.enterEditMode();
+  // }
 };
 
 MovieItem.prototype.deleteMovie = function(e){
@@ -750,7 +755,7 @@ MovieItem.prototype.changePoster = function(){
 };
 
 MovieItem.prototype.selectMovie = function(e){
-  e.preventDefault();
+  // e.preventDefault();
   e.stopPropagation();
   if (this.holding){
     this.holding = false;

@@ -7,37 +7,31 @@
 			<label class='toggle-off-label'>iOS</label>
 		</div>
 	</div>
+
 	<div id='main-playback' class='segment clearfix white clearfix'>
-		<div class='poster'>
-			<div id='poster-image'>
-				<img data-src='image_url < poster'></img>
-			</div>
-		</div>
-		<div class='movie-info'>
-			<h2> { title || file_name }</h2>
-		</div>
+
 	</div>
 
 	<div class='segment white clearfix' on-click='oncontrolclick'>
 		<div class='controls pre'>
-			<button class='btn transparent' data-hide='isPi' disable-if='notPlaying < isPlaying' on-click='toggleFullscreen'> Fullscreen </button>
-			<button class='btn transparent' data-show='isPi' disable-if='notPlaying < isPlaying' on-click='toggleSubtitles'> Subtitles </button>
+			<button class='btn transparent' data-hide='isTV' disable-if-not='isPlaying' on-click='toggleFullscreen'> Fullscreen </button>
+			<button class='btn transparent' data-hide='isLocal' disable-if-not='isPlaying' on-click='toggleSubtitles'> Subtitles </button>
 
 		</div>
 		<div class='controls'>
-			<a class='control back' href='#' disable-if='notPlaying <isPlaying' on-click='rewind'>
+			<a class='control back' href='#' disable-if-not='isPlaying' on-click='rewind'>
 				<i class='icon-backward-2'></i>
 			</a>
 			<a class='control play' href='#' on-click='play'>
 				<i class='icon-play-2' data-hide='isPlaying'></i>
 				<i class='icon-pause-2' data-show='isPlaying'></i>
 			</a>
-			<a class='control forward' href='#' disable-if='notPlaying < isPlaying' on-click='forward'>
+			<a class='control forward' href='#' disable-if-not='isPlaying' on-click='forward'>
 				<i class='icon-forward-2'></i>
 			</a>
 		</div>
 		<div class='controls post'>
-			<div class='slider volume' disable-if='notPlaying < isPlaying'>
+			<div class='slider volume' disable-if-not='isPlaying'>
 				<a href='#' class='slider-min-value'>
 					<i class='icon-volume-mute'></i>
 				</a>

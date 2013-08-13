@@ -17,7 +17,8 @@
     "bmcmahen/progress": "*",
     "component/hammer.js": "*",
     "component/event": "*",
-    "bmcmahen/background-zoom": "*"
+    "bmcmahen/background-zoom": "*",
+    "bmcmahen/hold": "*"
   },
   "license": "MIT",
   "main": "index.js",
