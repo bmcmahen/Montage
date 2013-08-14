@@ -55,7 +55,20 @@ var Movies = Collection.extend({
     subscriptions.on('movies:added', this.addMovie.bind(this));
     subscriptions.on('movies:changed', this.changeMovie.bind(this));
     subscriptions.on('movies:removed', this.remove.bind(this));
+    this.listenTo(this, 'change:playback', this.changeCurrentlyPlaying);
     this.sortOrder = 'title';
+  },
+
+  changeCurrentlyPlaying: function(model, value, options){
+    if (value === 'playing' || value === 'paused') {
+      this.onTV = model;
+      this.trigger('currentlyPlaying', model, value);
+    } else {
+      if (model == this.onTV) {
+        this.onTV = null;
+        this.trigger('notCurrentlyPlaying');
+      }
+    }
   },
 
   comparator: function(movie){

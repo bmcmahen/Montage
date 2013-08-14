@@ -33,7 +33,6 @@ Emitter(Subscriptions.prototype);
 ddp.on('connected', function(){
 	ddp.subscribe('movies');
 	ddp.subscribe('sources');
-	ddp.subscribe('currentlyPlaying');
 	ddp.isReady = true;
 });
 

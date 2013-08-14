@@ -2,23 +2,40 @@ var Session = require('session');
 var events = require('events');
 var dom = require('dom');
 var _ = require('underscore');
-var currentVideo = require('../collections/currently_playing');
+var movies = require('../collections/movies');
 
 var currentVideoView = new CurrentlyPlayingView();
 dom('#library-control').append(currentVideoView.$el);
 
-currentVideo.on('change', function(){
-  console.log('currentVideo changed', currentVideo.toJSON())
-  if (!currentVideo.get('playback')) {
-    currentVideoView.hide();
-    return;
+////////////////////////////////////
+// Listen for changes to Playback //
+////////////////////////////////////
+
+var currentMovie;
+movies.on('currentlyPlaying', function(model, value){
+  if (currentMovie != model) {
+    currentVideoView.render(model).show();
+    console.log('SHOW VIDEO');
   }
-  // if (_.isEmpty(currentVideo.attributes || !currentVideo.get('playback'))){
-  //   currentVideoView.hide();
-  //   return;
-  // }
-  currentVideoView.render(currentVideo).show();
 });
+
+movies.on('notCurrentlyPlaying', function(){
+  currentMovie = null;
+  currentVideoView.hide();
+  console.log('HIDE VIDEO');
+});
+
+
+/////////////////////////
+// Current Video View  //
+/////////////////////////
+//
+// This keeps track which videos are currently playing
+// on the tv, and gives you quick access (via the button
+// in the top right corner) to access controls for
+// the current playback. It should be updated accross all
+// connected devices.
+//
 
 function CurrentlyPlayingView(){
   this.$el = dom('<div></div>').id('currently-playing');

@@ -15828,7 +15828,6 @@ Emitter(Subscriptions.prototype);
 ddp.on('connected', function(){
 	ddp.subscribe('movies');
 	ddp.subscribe('sources');
-	ddp.subscribe('currentlyPlaying');
 	ddp.isReady = true;
 });
 
@@ -16008,7 +16007,20 @@ var Movies = Collection.extend({
     subscriptions.on('movies:added', this.addMovie.bind(this));
     subscriptions.on('movies:changed', this.changeMovie.bind(this));
     subscriptions.on('movies:removed', this.remove.bind(this));
+    this.listenTo(this, 'change:playback', this.changeCurrentlyPlaying);
     this.sortOrder = 'title';
+  },
+
+  changeCurrentlyPlaying: function(model, value, options){
+    if (value === 'playing' || value === 'paused') {
+      this.onTV = model;
+      this.trigger('currentlyPlaying', model, value);
+    } else {
+      if (model == this.onTV) {
+        this.onTV = null;
+        this.trigger('notCurrentlyPlaying');
+      }
+    }
   },
 
   comparator: function(movie){
@@ -16072,35 +16084,6 @@ var Sources = Collection.extend({
 });
 
 module.exports = new Sources();
-});
-require.register("collections/currently_playing.js", function(exports, require, module){
-var Model = require('backbone').Model;
-var _ = require('underscore');
-var ddp = require('../sockets').ddp;
-var subscriptions = require('../sockets').subscriptions;
-
-var CurrentlyPlaying = Model.extend({
-
-	idAttribute: '_id',
-
-	initialize: function(){
-		subscriptions.on('currentlyPlaying', this.handleSubscription.bind(this));
-		subscriptions.on('currentlyPlaying:changed', this.movieChanged.bind(this));
-	},
-
-	handleSubscription: function(doc){
-		if (!doc) return;
-		this.attributes = doc[0];
-		this.trigger('change');
-	},
-
-	movieChanged: function(doc){
-		this.attributes = doc;
-		this.trigger('change');
-	}
-});
-
-module.exports = new CurrentlyPlaying();
 });
 require.register("controls/index.js", function(exports, require, module){
 var VideoControls = function(){
@@ -22843,23 +22826,40 @@ var Session = require('session');
 var events = require('events');
 var dom = require('dom');
 var _ = require('underscore');
-var currentVideo = require('../collections/currently_playing');
+var movies = require('../collections/movies');
 
 var currentVideoView = new CurrentlyPlayingView();
 dom('#library-control').append(currentVideoView.$el);
 
-currentVideo.on('change', function(){
-  console.log('currentVideo changed', currentVideo.toJSON())
-  if (!currentVideo.get('playback')) {
-    currentVideoView.hide();
-    return;
+////////////////////////////////////
+// Listen for changes to Playback //
+////////////////////////////////////
+
+var currentMovie;
+movies.on('currentlyPlaying', function(model, value){
+  if (currentMovie != model) {
+    currentVideoView.render(model).show();
+    console.log('SHOW VIDEO');
   }
-  // if (_.isEmpty(currentVideo.attributes || !currentVideo.get('playback'))){
-  //   currentVideoView.hide();
-  //   return;
-  // }
-  currentVideoView.render(currentVideo).show();
 });
+
+movies.on('notCurrentlyPlaying', function(){
+  currentMovie = null;
+  currentVideoView.hide();
+  console.log('HIDE VIDEO');
+});
+
+
+/////////////////////////
+// Current Video View  //
+/////////////////////////
+//
+// This keeps track which videos are currently playing
+// on the tv, and gives you quick access (via the button
+// in the top right corner) to access controls for
+// the current playback. It should be updated accross all
+// connected devices.
+//
 
 function CurrentlyPlayingView(){
   this.$el = dom('<div></div>').id('currently-playing');
@@ -23516,7 +23516,6 @@ require.alias("component-type/index.js", "component-each/deps/type/index.js");
 require.alias("sockets/index.js", "sockets/index.js");
 require.alias("collections/movies.js", "boot/deps/collections/movies.js");
 require.alias("collections/sources.js", "boot/deps/collections/sources.js");
-require.alias("collections/currently_playing.js", "boot/deps/collections/currently_playing.js");
 require.alias("collections/movies.js", "boot/deps/collections/index.js");
 require.alias("component-jquery/index.js", "collections/deps/jquery/index.js");
 
@@ -23812,7 +23811,6 @@ require.alias("component-type/index.js", "component-each/deps/type/index.js");
 require.alias("sockets/index.js", "sockets/index.js");
 require.alias("collections/movies.js", "sources/deps/collections/movies.js");
 require.alias("collections/sources.js", "sources/deps/collections/sources.js");
-require.alias("collections/currently_playing.js", "sources/deps/collections/currently_playing.js");
 require.alias("collections/movies.js", "sources/deps/collections/index.js");
 require.alias("component-jquery/index.js", "collections/deps/jquery/index.js");
 
