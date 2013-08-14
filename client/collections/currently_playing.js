@@ -19,7 +19,6 @@ var CurrentlyPlaying = Model.extend({
 	},
 
 	movieChanged: function(doc){
-		console.log('movie changed!', doc);
 		this.attributes = doc;
 		this.trigger('change');
 	}

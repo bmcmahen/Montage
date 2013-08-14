@@ -15,9 +15,7 @@ require('./lib/torrents');
 require('./lib/search');
 require('./lib/playback');
 require('./lib/library/network');
-require('./client/build')
-
-var streaming = require('./lib/streaming');
+require('./lib/streaming');
 
 // Socket Stuff
 var WebSocketServer = require('ws').Server
@@ -25,11 +23,13 @@ var DDPServer = require('./lib/sockets');
 var wss = new WebSocketServer({ server : server });
 var ddp = new DDPServer(wss);
 
+// Development Building
+if (app.settings.env === 'development') {
+	require('./client/build');
+}
 
 app.use(require('./lib/playback/torrent'));
 app.use(express.logger('dev'));
-// app.use(express.bodyParser());
-// app.use(express.methodOverride());
 app.use(function(req, res, next){
 	// Use aggressive caching for our movie images, so that we touch the server
 	// as little as possible.
@@ -43,7 +43,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(require('./lib/torrents'));
 app.use(require('./lib/streaming'));
 
-app.get('/', function(req, res){
+// Serve up our HTML file. Eventually add a clientside
+// router.
+app.get('*', function(req, res){
   res.send(__dirname + '/public/index.html');
 });
 

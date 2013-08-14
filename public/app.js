@@ -16095,7 +16095,6 @@ var CurrentlyPlaying = Model.extend({
 	},
 
 	movieChanged: function(doc){
-		console.log('movie changed!', doc);
 		this.attributes = doc;
 		this.trigger('change');
 	}
@@ -22571,13 +22570,22 @@ Playback.prototype.forward = function(e){
   e.stopPropagation();
   if (session.get('playbackDevice') === 'local'){
     if (!this.video) return;
-    this.video.currentTime = this.video.currentTime + 30;
+    this.video.currentTime += 30;
   } else {
-    ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
-      console.log('froward result.')
-    });
+    ddp.call('forwardVideo');
   }
 };
+
+Playback.prototype.rewind = function(e){
+  e.preventDefault();
+  e.stopPropagation();
+  if (session.get('playbackDevice') === 'local'){
+    if (!this.video) return;
+    this.video.currentTime -= 30;
+  } else {
+    ddp.call('backwardVideo');
+  }
+}
 
 Playback.prototype.toggleFullscreen = function(e){
   e.stopPropagation();
@@ -22600,8 +22608,10 @@ Playback.prototype.toggleTVPlayback = function(){
     });
   } else {
     var options = {};
-    options.currentTime = this.model.get('currentTime');
-    options.volume = session.get('tvVolume');
+    // this should be normalized so that it's compatible w/
+    // different players.
+    options['-l'] = this.model.get('currentTime');
+    options['--vol'] = session.get('tvVolume');
     this.movie.set('playback', 'playing');
     ddp.apply('playVideo', [this.movie.toJSON(), options], function(err){
       if (err) console.log(err);

@@ -12,3 +12,14 @@ Primary target platform right now are tablets, namely the iPad (which I can test
 
 ![ScreenShot](https://s3.amazonaws.com/ben_random_images/montage1.jpg)
 ![ScreenShot](https://s3.amazonaws.com/ben_random_images/montage2.jpg)
+
+## Install
+
+This will eventually be much easier... but.. if you're adventurous, here's how. (and go grab a coffee).
+- Install Node
+- Install graphicsmagick
+- clone this repository to your pi
+- npm install (from within the directory)
+- `export NODE_ENV=production` in the terminal
+- `npm install -g forever` in the terminal (optional)
+- `forever app.js` or `node app.js`.
