@@ -22193,8 +22193,10 @@ TabView.prototype.playView = function(e){
 		.empty()
 		.append(new Playback(this.movie).$el);
 		console.log('play view render');
-	var img = this.$content.find('img').get();
-	if (img) onload(img);
+
+	this.$content.find('img').forEach(function(img){
+		onload(img);
+	});
 };
 
 TabView.prototype.metaView = function(e){
@@ -22412,6 +22414,8 @@ var PlaybackModel = Model.extend({
     this.set('isTV', session.get('playbackDevice') === 'tv');
     this.set('isLocal', !this.get('isTV'));
     this.set('isPlaying', false);
+    this.set('TVplaybackStarted', false);
+    this.set('localPlaybackStarted', false);
   },
 
   initialize: function(attr, movie){
@@ -22421,6 +22425,11 @@ var PlaybackModel = Model.extend({
     if (movie.get('playback') === 'playing') {
       if (this.get('isTV')) {
         this.set('isPlaying', true);
+      }
+    }
+    if (movie.get('playback')) {
+      if (this.get('isTV')) {
+        this.set('TVplaybackStarted', true);
       }
     }
   },
@@ -22435,12 +22444,18 @@ var PlaybackModel = Model.extend({
     }
   },
 
-  setPlayback: function(){
-    console.log('setPlayback changed', this.movie.get('playback'));
+  setPlayback: function(model, value){
     if (this.get('isTV')) {
-      var pb = this.movie.get('playback');
-      if (pb === 'playing') this.set('isPlaying', true);
-      else this.set('isPlaying', false);
+      if (!value) {
+        this.set('isPlaying', false);
+        this.set('TVplaybackStarted', false);
+      }
+      if (value === 'playing') {
+        this.set('isPlaying', true);
+        this.set('TVplaybackStarted', true);
+      } else {
+        this.set('isPlaying', false);
+      }
     }
   }
 
@@ -22461,10 +22476,19 @@ function Playback(movie){
   this.$el = dom(require('./templates/playback.html'));
   this.reactive = reactive(this.$el.get(), this.model, this);
 
-  // Our meta template
+  // Our meta1 template
   this.$metaEl = dom(require('./templates/movieinfo.html'));
   this.reactiveMeta = reactive(this.$metaEl.get(), this.movie, this);
-  this.$el.find('#main-playback').empty().append(this.$metaEl);
+  this.$el.find('.movie-meta-1').append(this.$metaEl);
+
+  this.$metaEl2 = dom(require('./templates/movieinfo.html'));
+  this.reactiveMeta2 = reactive(this.$metaEl2.get(), this.movie, this);
+  this.$el.find('.movie-meta-2').append(this.$metaEl2);
+
+  // Our TV playback template
+  this.$tvEl = dom(require('./templates/tvplayback.html'));
+  this.reactiveTVPlay = reactive(this.$tvEl.get(), this.movie, this);
+  this.$el.find('.tv-control').append(this.$tvEl);
 
   this.createToggle();
   this.createVolume();
@@ -22497,9 +22521,14 @@ Playback.prototype.togglePlayback = function(){
   // our volume to the TV volume level. Also, make sure
   // that our local video (if it exists) is paused.
   if (otherDevice === 'tv'){
-    if (this.video) this.video.pause();
+    if (this.video){
+      dom('.zoom-background').removeClass('fade');
+      if (this.tempEvents) this.tempEvents.unbind();
+      this.video.pause();
+    }
     if (this.movie.get('playback') === 'playing') {
       this.model.set('isPlaying', true);
+      this.model.set('TVplaybackStarted', true);
     } else {
       this.model.set('isPlaying', false);
     }
@@ -22596,6 +22625,7 @@ Playback.prototype.toggleTVPlayback = function(){
     options['-l'] = this.model.get('currentTime');
     options['--vol'] = session.get('tvVolume');
     this.movie.set('playback', 'playing');
+    this.model.set('playbackStarted', true);
     ddp.apply('playVideo', [this.movie.toJSON(), options], function(err){
       if (err) console.log(err);
     });
@@ -22610,19 +22640,21 @@ Playback.prototype.toggleLocalPlayback = function(){
         ? '/stream/'
         : '/videos/';
 
-      $video.src(src + this.movie.id);
-      this.$el
-        .find('#main-playback')
-        .empty()
-        .addClass('video')
-        .append($video);
       this.video = $video.get();
       this.videoEvents = events(this.video, this);
       this.videoEvents.bind('pause', 'onpause');
-      this.videoEvents.bind('error', 'onpause');
-      this.videoEvents.bind('ended', 'onpause');
+      this.videoEvents.bind('error', 'onerror');
+      this.videoEvents.bind('ended', 'onerror');
+
+      $video.src(src + this.movie.id);
+      this.$el
+        .find('#movie-local-playback')
+        .empty()
+        .addClass('video')
+        .append($video);
     }
     this.model.set('isPlaying', true);
+    this.model.set('localPlaybackStarted', true);
     dom('.zoom-background').addClass('fade');
     this.video.play();
     this.setVolume(session.get('volume'));
@@ -22633,6 +22665,13 @@ Playback.prototype.toggleLocalPlayback = function(){
     this.tempEvents.unbind();
     this.video.pause();
   }
+};
+
+Playback.prototype.onerror = function(){
+  console.log("ERROR");
+  this.model.set('isPlaying', false);
+  this.model.set('localPlaybackStarted', false);
+  dom('.zoom-background').removeClass('fade');
 };
 
 Playback.prototype.onpause = function(){
@@ -22646,10 +22685,29 @@ Playback.prototype.image_url = function(){
   return '/movies/w342' + this.movie.get('original_poster_path');;
 };
 
+Playback.prototype.quitMovie = function(e){
+  console.log('quit movie!');
+  ddp.call('quitMovie');
+  this.model.set('isPlaying', false);
+  this.model.set('TVplaybackStarted', false);
+};
+
 Playback.prototype.close = function(){
   this.$el.remove();
   if (this.videoEvents) this.videoEvents.unbind();
   this.stopListening();
+};
+
+Playback.prototype.playbackStartedAndLocal = function(){
+  return this.model.get('isLocal') && this.model.get('localPlaybackStarted');
+};
+
+Playback.prototype.playbackStartedAndTV = function(){
+  return this.model.get('isTV') && this.model.get('TVplaybackStarted');
+};
+
+Playback.prototype.aPlaybackStarted = function(){
+  return this.model.get('TVplaybackStarted') || this.model.get('localPlaybackStarted');
 };
 
 
@@ -23398,7 +23456,7 @@ require.register("bmcmahen-slider/template.html", function(exports, require, mod
 module.exports = '<div class=\'slider\'>\n	<a href=\'#\' class=\'slider-min-value\'>0</a>\n	<div class=\'slider-range\'>\n		<input type=\'range\'/>\n	</div>\n	<a href=\'#\' class=\'slider-max-value\'>10</a>\n</div>';
 });
 require.register("movie/templates/playback.html", function(exports, require, module){
-module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>TV</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<div class=\'slider volume\' disable-if-not=\'isPlaying\'>\n				<a href=\'#\' class=\'slider-min-value\'>\n					<i class=\'icon-volume-mute\'></i>\n				</a>\n				<div class=\'slider-range\'>\n					<input type=\'range\'/>\n				</div>\n				<a href=\'#\' class=\'slider-max-value\'>\n					<i class=\'icon-volume-high\'></i>\n				</a>\n			</div>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
+module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>TV</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div id=\'movie-local-playback\' data-show=\'isLocal\'>\n			<div class=\'video-wrapper\' data-show=\'localPlaybackStarted\'></div>\n			<div class=\'movie-meta-1\' data-hide="localPlaybackStarted"></div>\n		</div>\n		<div id=\'movie-tv-playback\' data-show=\'isTV\'>\n			<div class=\'tv-control\' data-show=\'TVplaybackStarted\'></div>\n			<div class=\'movie-meta-2\' data-hide=\'TVPlaybackStarted\'></div>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<div class=\'slider volume\' disable-if-not=\'isPlaying\'>\n				<a href=\'#\' class=\'slider-min-value\'>\n					<i class=\'icon-volume-mute\'></i>\n				</a>\n				<div class=\'slider-range\'>\n					<input type=\'range\'/>\n				</div>\n				<a href=\'#\' class=\'slider-max-value\'>\n					<i class=\'icon-volume-high\'></i>\n				</a>\n			</div>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
 module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
@@ -23411,6 +23469,9 @@ module.exports = '<div class=\'span6 offset3\'>\n	<div class=\'row\'>\n		<div cl
 });
 require.register("movie/templates/movieinfo.html", function(exports, require, module){
 module.exports = '<div class=\'poster\'>\n	<div id=\'poster-image\'>\n		<img data-src=\'image_url < original_poster_path\'></img>\n	</div>\n</div>\n<div class=\'movie-info\'>\n	<h2> { title || file_name }</h2>\n</div>';
+});
+require.register("movie/templates/tvplayback.html", function(exports, require, module){
+module.exports = '<div class=\'movie-info\'>\n	<h2>Current Movie: { title || file_name }</h2>\n	<button class=\'btn center\' on-click=\'quitMovie\'>Quit Player</button>\n</div>';
 });
 
 require.register("modal/templates/torrent.jade", function(exports, require, module){

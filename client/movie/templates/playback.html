@@ -9,7 +9,14 @@
 	</div>
 
 	<div id='main-playback' class='segment clearfix white clearfix'>
-
+		<div id='movie-local-playback' data-show='isLocal'>
+			<div class='video-wrapper' data-show='localPlaybackStarted'></div>
+			<div class='movie-meta-1' data-hide="localPlaybackStarted"></div>
+		</div>
+		<div id='movie-tv-playback' data-show='isTV'>
+			<div class='tv-control' data-show='TVplaybackStarted'></div>
+			<div class='movie-meta-2' data-hide='TVPlaybackStarted'></div>
+		</div>
 	</div>
 
 	<div class='segment white clearfix' on-click='oncontrolclick'>

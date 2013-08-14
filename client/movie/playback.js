@@ -66,6 +66,8 @@ var PlaybackModel = Model.extend({
     this.set('isTV', session.get('playbackDevice') === 'tv');
     this.set('isLocal', !this.get('isTV'));
     this.set('isPlaying', false);
+    this.set('TVplaybackStarted', false);
+    this.set('localPlaybackStarted', false);
   },
 
   initialize: function(attr, movie){
@@ -75,6 +77,11 @@ var PlaybackModel = Model.extend({
     if (movie.get('playback') === 'playing') {
       if (this.get('isTV')) {
         this.set('isPlaying', true);
+      }
+    }
+    if (movie.get('playback')) {
+      if (this.get('isTV')) {
+        this.set('TVplaybackStarted', true);
       }
     }
   },
@@ -89,12 +96,18 @@ var PlaybackModel = Model.extend({
     }
   },
 
-  setPlayback: function(){
-    console.log('setPlayback changed', this.movie.get('playback'));
+  setPlayback: function(model, value){
     if (this.get('isTV')) {
-      var pb = this.movie.get('playback');
-      if (pb === 'playing') this.set('isPlaying', true);
-      else this.set('isPlaying', false);
+      if (!value) {
+        this.set('isPlaying', false);
+        this.set('TVplaybackStarted', false);
+      }
+      if (value === 'playing') {
+        this.set('isPlaying', true);
+        this.set('TVplaybackStarted', true);
+      } else {
+        this.set('isPlaying', false);
+      }
     }
   }
 
@@ -115,10 +128,19 @@ function Playback(movie){
   this.$el = dom(require('./templates/playback.html'));
   this.reactive = reactive(this.$el.get(), this.model, this);
 
-  // Our meta template
+  // Our meta1 template
   this.$metaEl = dom(require('./templates/movieinfo.html'));
   this.reactiveMeta = reactive(this.$metaEl.get(), this.movie, this);
-  this.$el.find('#main-playback').empty().append(this.$metaEl);
+  this.$el.find('.movie-meta-1').append(this.$metaEl);
+
+  this.$metaEl2 = dom(require('./templates/movieinfo.html'));
+  this.reactiveMeta2 = reactive(this.$metaEl2.get(), this.movie, this);
+  this.$el.find('.movie-meta-2').append(this.$metaEl2);
+
+  // Our TV playback template
+  this.$tvEl = dom(require('./templates/tvplayback.html'));
+  this.reactiveTVPlay = reactive(this.$tvEl.get(), this.movie, this);
+  this.$el.find('.tv-control').append(this.$tvEl);
 
   this.createToggle();
   this.createVolume();
@@ -151,9 +173,14 @@ Playback.prototype.togglePlayback = function(){
   // our volume to the TV volume level. Also, make sure
   // that our local video (if it exists) is paused.
   if (otherDevice === 'tv'){
-    if (this.video) this.video.pause();
+    if (this.video){
+      dom('.zoom-background').removeClass('fade');
+      if (this.tempEvents) this.tempEvents.unbind();
+      this.video.pause();
+    }
     if (this.movie.get('playback') === 'playing') {
       this.model.set('isPlaying', true);
+      this.model.set('TVplaybackStarted', true);
     } else {
       this.model.set('isPlaying', false);
     }
@@ -250,6 +277,7 @@ Playback.prototype.toggleTVPlayback = function(){
     options['-l'] = this.model.get('currentTime');
     options['--vol'] = session.get('tvVolume');
     this.movie.set('playback', 'playing');
+    this.model.set('playbackStarted', true);
     ddp.apply('playVideo', [this.movie.toJSON(), options], function(err){
       if (err) console.log(err);
     });
@@ -264,19 +292,21 @@ Playback.prototype.toggleLocalPlayback = function(){
         ? '/stream/'
         : '/videos/';
 
-      $video.src(src + this.movie.id);
-      this.$el
-        .find('#main-playback')
-        .empty()
-        .addClass('video')
-        .append($video);
       this.video = $video.get();
       this.videoEvents = events(this.video, this);
       this.videoEvents.bind('pause', 'onpause');
-      this.videoEvents.bind('error', 'onpause');
-      this.videoEvents.bind('ended', 'onpause');
+      this.videoEvents.bind('error', 'onerror');
+      this.videoEvents.bind('ended', 'onerror');
+
+      $video.src(src + this.movie.id);
+      this.$el
+        .find('#movie-local-playback')
+        .empty()
+        .addClass('video')
+        .append($video);
     }
     this.model.set('isPlaying', true);
+    this.model.set('localPlaybackStarted', true);
     dom('.zoom-background').addClass('fade');
     this.video.play();
     this.setVolume(session.get('volume'));
@@ -287,6 +317,13 @@ Playback.prototype.toggleLocalPlayback = function(){
     this.tempEvents.unbind();
     this.video.pause();
   }
+};
+
+Playback.prototype.onerror = function(){
+  console.log("ERROR");
+  this.model.set('isPlaying', false);
+  this.model.set('localPlaybackStarted', false);
+  dom('.zoom-background').removeClass('fade');
 };
 
 Playback.prototype.onpause = function(){
@@ -300,9 +337,28 @@ Playback.prototype.image_url = function(){
   return '/movies/w342' + this.movie.get('original_poster_path');;
 };
 
+Playback.prototype.quitMovie = function(e){
+  console.log('quit movie!');
+  ddp.call('quitMovie');
+  this.model.set('isPlaying', false);
+  this.model.set('TVplaybackStarted', false);
+};
+
 Playback.prototype.close = function(){
   this.$el.remove();
   if (this.videoEvents) this.videoEvents.unbind();
   this.stopListening();
+};
+
+Playback.prototype.playbackStartedAndLocal = function(){
+  return this.model.get('isLocal') && this.model.get('localPlaybackStarted');
+};
+
+Playback.prototype.playbackStartedAndTV = function(){
+  return this.model.get('isTV') && this.model.get('TVplaybackStarted');
+};
+
+Playback.prototype.aPlaybackStarted = function(){
+  return this.model.get('TVplaybackStarted') || this.model.get('localPlaybackStarted');
 };
 

@@ -33,6 +33,7 @@
     "templates/container.html",
     "templates/meta-search-result.jade",
     "templates/meta.html",
-    "templates/movieinfo.html"
+    "templates/movieinfo.html",
+    "templates/tvplayback.html"
   ]
 }

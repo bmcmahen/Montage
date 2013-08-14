@@ -74,8 +74,10 @@ TabView.prototype.playView = function(e){
 		.empty()
 		.append(new Playback(this.movie).$el);
 		console.log('play view render');
-	var img = this.$content.find('img').get();
-	if (img) onload(img);
+
+	this.$content.find('img').forEach(function(img){
+		onload(img);
+	});
 };
 
 TabView.prototype.metaView = function(e){
