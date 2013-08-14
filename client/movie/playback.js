@@ -90,6 +90,7 @@ var PlaybackModel = Model.extend({
   },
 
   setPlayback: function(){
+    console.log('setPlayback changed', this.movie.get('playback'));
     if (this.get('isTV')) {
       var pb = this.movie.get('playback');
       if (pb === 'playing') this.set('isPlaying', true);

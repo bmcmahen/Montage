@@ -16089,11 +16089,13 @@ var CurrentlyPlaying = Model.extend({
 	},
 
 	handleSubscription: function(doc){
+		if (!doc) return;
 		this.attributes = doc[0];
 		this.trigger('change');
 	},
 
 	movieChanged: function(doc){
+		console.log('movie changed!', doc);
 		this.attributes = doc;
 		this.trigger('change');
 	}
@@ -18723,14 +18725,6 @@ MovieItem.prototype.bind = function(){
     self.holding = true;
     self.enterEditMode();
   });
-  // this.hammer = new Hammer(this.$el);
-  // var self = this;
-  // this.hammer.onhold = function(e){
-  //   e.originalEvent.preventDefault();
-  //   e.originalEvent.stopPropagation();
-  //   self.holding = true;
-  //   self.enterEditMode();
-  // }
 };
 
 MovieItem.prototype.deleteMovie = function(e){
@@ -18802,6 +18796,7 @@ MovieItem.prototype.changePoster = function(){
 };
 
 MovieItem.prototype.selectMovie = function(e){
+  console.log('select movie');
   // e.preventDefault();
   e.stopPropagation();
   if (this.holding){
@@ -19122,7 +19117,7 @@ var buf = [];
 with (locals || {}) {
 if ( locals.original_poster_path)
 {
-buf.push("<div class=\"images\"><i class=\"icon-close\"></i><div class=\"img-container\">");
+buf.push("<div class=\"images\"><i class=\"icon-close\"></i>");
 if ( locals.is_phone)
 {
 buf.push("<img" + (jade.attrs({ 'src':(image_path + locals.original_poster_path), 'width':('85'), 'height':('122') }, {"src":true,"width":true,"height":true})) + "/>");
@@ -19131,7 +19126,7 @@ else
 {
 buf.push("<img" + (jade.attrs({ 'src':(image_path + locals.original_poster_path), 'width':('130'), 'height':('195') }, {"src":true,"width":true,"height":true})) + "/>");
 }
-buf.push("</div></div><p class=\"name\">" + (jade.escape(null == (jade.interp = locals.title) ? "" : jade.interp)) + "</p>");
+buf.push("<div class=\"img-container\"></div></div><p class=\"name\">" + (jade.escape(null == (jade.interp = locals.title) ? "" : jade.interp)) + "</p>");
 if ( locals.runtime)
 {
 buf.push("<p class=\"meta\">" + (jade.escape(null == (jade.interp = locals.runtime + ' Minutes') ? "" : jade.interp)) + "</p>");
@@ -19139,7 +19134,7 @@ buf.push("<p class=\"meta\">" + (jade.escape(null == (jade.interp = locals.runti
 }
 else
 {
-buf.push("<div class=\"image-placeholder images\"><i class=\"icon-close\"></i><div class=\"img-container\"><i class=\"icon-question\"></i></div></div><p class=\"name\">" + (jade.escape(null == (jade.interp = locals.title || locals.file_name) ? "" : jade.interp)) + "</p>");
+buf.push("<div class=\"image-placeholder images\"><i class=\"icon-close\"></i><i class=\"icon-question\"></i><div class=\"img-container\"></div></div><p class=\"name\">" + (jade.escape(null == (jade.interp = locals.title || locals.file_name) ? "" : jade.interp)) + "</p>");
 }
 }
 return buf.join("");
@@ -22145,16 +22140,11 @@ var ddp = require('../sockets').ddp;
 
 var dom = require('dom');
 var events = require('events');
-var reactive = require('reactive');
 var bind = require('event');
 var loading = require('loading');
 var EmitterManager = require('emitter-manager');
 var onload = require('onload');
-var fullscreen = require('fullscreen');
-var Toggle = require('toggle');
-var Slider = require('slider');
 
-// Session.setDefault('playbackDevice', 'raspberrypi');
 
 
 var Playback = require('./playback');
@@ -22326,6 +22316,49 @@ function SearchResult(model, json){
   }
 }
 
+/////////////////
+// Controller  //
+/////////////////
+
+
+
+(function(){
+  var Model = require('backbone').Model;
+  var $footer = dom('#footer');
+  var movieView, previousMovie;
+  var collection = require('../collections/movies');
+
+  var updateStore = function(model){
+    Session.set('selected_movie', Session.get('selected_movie'), {
+      silent: true
+    });
+  }
+
+  function showMovie(val){
+    if (!val) $footer.addClass('hidden');
+    if (previousMovie) {
+      previousMovie.off('change', updateStore);
+      if (movieView) movieView.close();
+    }
+    if (val){
+      if (!(val instanceof Model)) {
+        collection.add(val);
+        val = collection.get(val._id);
+      }
+      val.on('change', updateStore);
+      previousMovie = val;
+      movieView = new TabView(val).render();
+      $footer
+      	.removeClass('hidden')
+      	.append(movieView.$el);
+    }
+  }
+
+  Session.on('change:selected_movie', showMovie);
+  var holdover = Session.get('selected_movie');
+  if (holdover) showMovie(holdover);
+
+})();
 
 });
 require.register("movie/playback.js", function(exports, require, module){
@@ -22370,19 +22403,19 @@ reactive.unsubscribe(function(obj, prop, fn){
 });
 
 reactive.bind('disable-if', function(el, name){
-	var $el = dom(el);
-	this.change(function(){
-		if (this.value(name)) $el.addClass('disabled');
-		else $el.removeClass('disabled');
-	});
+  var $el = dom(el);
+  this.change(function(){
+    if (this.value(name)) $el.addClass('disabled');
+    else $el.removeClass('disabled');
+  });
 });
 
 reactive.bind('disable-if-not', function(el, name){
-	var $el = dom(el);
-	this.change(function(){
-		if (this.value(name)) $el.removeClass('disabled');
-		else $el.addClass('disabled');
-	});
+  var $el = dom(el);
+  this.change(function(){
+    if (this.value(name)) $el.removeClass('disabled');
+    else $el.addClass('disabled');
+  });
 });
 
 
@@ -22393,40 +22426,41 @@ reactive.bind('disable-if-not', function(el, name){
 
 var PlaybackModel = Model.extend({
 
-	defaults: function(){
-		this.set('isTV', session.get('playbackDevice') === 'tv');
-		this.set('isLocal', !this.get('isTV'));
-		this.set('isPlaying', false);
-	},
+  defaults: function(){
+    this.set('isTV', session.get('playbackDevice') === 'tv');
+    this.set('isLocal', !this.get('isTV'));
+    this.set('isPlaying', false);
+  },
 
-	initialize: function(attr, movie){
-		this.movie = movie;
-		this.listenTo(session, 'change:playbackDevice', this.setDevice.bind(this));
-		this.listenTo(movie, 'change:playback', this.setPlayback);
-		if (movie.get('playback') === 'playing') {
-			if (this.get('isTV')) {
-				this.set('isPlaying', true);
-			}
-		}
-	},
+  initialize: function(attr, movie){
+    this.movie = movie;
+    this.listenTo(session, 'change:playbackDevice', this.setDevice.bind(this));
+    this.listenTo(movie, 'change:playback', this.setPlayback);
+    if (movie.get('playback') === 'playing') {
+      if (this.get('isTV')) {
+        this.set('isPlaying', true);
+      }
+    }
+  },
 
-	setDevice: function(){
-		if (session.get('playbackDevice') === 'tv') {
-			this.set('isTV', true);
-			this.set('isLocal', false);
-		} else {
-			this.set('isTV', false);
-			this.set('isLocal', true);
-		}
-	},
+  setDevice: function(){
+    if (session.get('playbackDevice') === 'tv') {
+      this.set('isTV', true);
+      this.set('isLocal', false);
+    } else {
+      this.set('isTV', false);
+      this.set('isLocal', true);
+    }
+  },
 
-	setPlayback: function(){
-		if (this.get('isTV')) {
-			var pb = this.movie.get('playback');
-			if (pb === 'playing') this.set('isPlaying', true);
-			else this.set('isPlaying', false);
-		}
-	}
+  setPlayback: function(){
+    console.log('setPlayback changed', this.movie.get('playback'));
+    if (this.get('isTV')) {
+      var pb = this.movie.get('playback');
+      if (pb === 'playing') this.set('isPlaying', true);
+      else this.set('isPlaying', false);
+    }
+  }
 
 
 });
@@ -22438,191 +22472,191 @@ var PlaybackModel = Model.extend({
 module.exports = Playback;
 
 function Playback(movie){
-	this.movie = movie;
-	this.model = new PlaybackModel(null, movie);
+  this.movie = movie;
+  this.model = new PlaybackModel(null, movie);
 
-	// Our playback wrapper/template
-	this.$el = dom(require('./templates/playback.html'));
-	this.reactive = reactive(this.$el.get(), this.model, this);
+  // Our playback wrapper/template
+  this.$el = dom(require('./templates/playback.html'));
+  this.reactive = reactive(this.$el.get(), this.model, this);
 
-	// Our meta template
-	this.$metaEl = dom(require('./templates/movieinfo.html'));
-	this.reactiveMeta = reactive(this.$metaEl.get(), this.movie, this);
-	this.$el.find('#main-playback').empty().append(this.$metaEl);
+  // Our meta template
+  this.$metaEl = dom(require('./templates/movieinfo.html'));
+  this.reactiveMeta = reactive(this.$metaEl.get(), this.movie, this);
+  this.$el.find('#main-playback').empty().append(this.$metaEl);
 
-	this.createToggle();
-	this.createVolume();
-	this.listen();
+  this.createToggle();
+  this.createVolume();
+  this.listen();
 }
 
 EmitterManager(Playback.prototype);
 
 Playback.prototype.listen = function(){
-	this.listenTo(this.toggle, 'change', this.togglePlayback);
-	this.listenTo(this.volume, 'change:value', this.setVolume);
+  this.listenTo(this.toggle, 'change', this.togglePlayback);
+  this.listenTo(this.volume, 'change:value', this.setVolume);
 }
 
 Playback.prototype.createToggle = function(){
-	var el = this.$el.find('.toggle').get();
-	this.toggle = new Toggle(null, el);
+  var el = this.$el.find('.toggle').get();
+  this.toggle = new Toggle(null, el);
 
-	// set our initial value.
-	this.toggle.value(session.get('playbackDevice') === 'tv');
+  // set our initial value.
+  this.toggle.value(session.get('playbackDevice') === 'tv');
 };
 
 Playback.prototype.togglePlayback = function(){
-	var otherDevice = (session.get('playbackDevice') === 'tv')
-		? 'local'
-		: 'tv';
-	session.set('playbackDevice', otherDevice);
+  var otherDevice = (session.get('playbackDevice') === 'tv')
+    ? 'local'
+    : 'tv';
+  session.set('playbackDevice', otherDevice);
 
-	// When switchin from Local to TV, make sure that our
-	// play button is set to the correct state, and reset
-	// our volume to the TV volume level. Also, make sure
-	// that our local video (if it exists) is paused.
-	if (otherDevice === 'tv'){
-		if (this.video) this.video.pause();
-		if (this.movie.get('playback') === 'playing') {
-			this.model.set('isPlaying', true);
-		} else {
-			this.model.set('isPlaying', false);
-		}
-		this.volume.setValue(session.get('tvVolume'));
+  // When switchin from Local to TV, make sure that our
+  // play button is set to the correct state, and reset
+  // our volume to the TV volume level. Also, make sure
+  // that our local video (if it exists) is paused.
+  if (otherDevice === 'tv'){
+    if (this.video) this.video.pause();
+    if (this.movie.get('playback') === 'playing') {
+      this.model.set('isPlaying', true);
+    } else {
+      this.model.set('isPlaying', false);
+    }
+    this.volume.setValue(session.get('tvVolume'));
 
-	// When switching from TV to Local, make sure
-	// that our play button is paused. Also, switch our
-	// volume indicator to Local volume.
-	} else {
-		this.model.set('isPlaying', false);
-		this.volume.setValue(session.get('volume'));
-	}
+  // When switching from TV to Local, make sure
+  // that our play button is paused. Also, switch our
+  // volume indicator to Local volume.
+  } else {
+    this.model.set('isPlaying', false);
+    this.volume.setValue(session.get('volume'));
+  }
 };
 
 Playback.prototype.createVolume = function(){
-	var el = this.$el.find('.volume').get();
-	this.volume = new Slider(null, el)
-		.range(0, 10)
-		.step(1);
+  var el = this.$el.find('.volume').get();
+  this.volume = new Slider(null, el)
+    .range(0, 10)
+    .step(1);
 
-	// set our initial value.
-	var val = (session.get('playbackDevice') === 'tv')
-		? session.get('tvVolume')
-		: session.get('volume');
+  // set our initial value.
+  var val = (session.get('playbackDevice') === 'tv')
+    ? session.get('tvVolume')
+    : session.get('volume');
 
-	this.volume.setValue(val);
+  this.volume.setValue(val);
 };
 
 Playback.prototype.setVolume = function(val, prev){
-	if (session.get('playbackDevice') === 'tv') {
-		session.set('tvVolume', val);
-		if (val > prev) ddp.call('volumeUp');
-		else ddp.call('volumeDown');
-	} else {
-		session.set('volume', val);
-		this.video.volume = (val / 10);
-	}
+  if (session.get('playbackDevice') === 'tv') {
+    session.set('tvVolume', val);
+    if (val > prev) ddp.call('volumeUp');
+    else ddp.call('volumeDown');
+  } else {
+    session.set('volume', val);
+    this.video.volume = (val / 10);
+  }
 };
 
 Playback.prototype.oncontrolclick = function(e){
-	e.stopPropagation();
-	e.preventDefault();
+  e.stopPropagation();
+  e.preventDefault();
 };
 
 Playback.prototype.toggleSubtitles = function(){
-	ddp.call('toggleSubtitles');
+  ddp.call('toggleSubtitles');
 };
 
 Playback.prototype.forward = function(e){
-	e.preventDefault();
-	e.stopPropagation();
-	if (session.get('playbackDevice') === 'local'){
-		if (!this.video) return;
-		this.video.currentTime = this.video.currentTime + 30;
-	} else {
-		ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
-			console.log('froward result.')
-		});
-	}
+  e.preventDefault();
+  e.stopPropagation();
+  if (session.get('playbackDevice') === 'local'){
+    if (!this.video) return;
+    this.video.currentTime = this.video.currentTime + 30;
+  } else {
+    ddp.call('forwardVideo', this.model.toJSON(), function(err, res){
+      console.log('froward result.')
+    });
+  }
 };
 
 Playback.prototype.toggleFullscreen = function(e){
-	e.stopPropagation();
-	if (this.video) {
-		if (this.video.webkitEnterFullscreen) this.video.webkitEnterFullscreen();
-		else fullscreen(this.video);
-	}
+  e.stopPropagation();
+  if (this.video) {
+    if (this.video.webkitEnterFullscreen) this.video.webkitEnterFullscreen();
+    else fullscreen(this.video);
+  }
 };
 
 Playback.prototype.play = function(e){
-	if (session.get('playbackDevice') === 'tv') this.toggleTVPlayback();
-	else this.toggleLocalPlayback();
+  if (session.get('playbackDevice') === 'tv') this.toggleTVPlayback();
+  else this.toggleLocalPlayback();
 };
 
 Playback.prototype.toggleTVPlayback = function(){
-	if (this.model.get('isPlaying')) {
-		this.movie.set('playback', 'paused');
-		ddp.call('pauseVideo', this.movie.toJSON(), function(err){
-			if (err) console.log(err);
-		});
-	} else {
-		var options = {};
-		options.currentTime = this.model.get('currentTime');
-		options.volume = session.get('tvVolume');
-		this.movie.set('playback', 'playing');
-		ddp.apply('playVideo', [this.movie.toJSON(), options], function(err){
-			if (err) console.log(err);
-		});
-	}
+  if (this.model.get('isPlaying')) {
+    this.movie.set('playback', 'paused');
+    ddp.call('pauseVideo', this.movie.toJSON(), function(err){
+      if (err) console.log(err);
+    });
+  } else {
+    var options = {};
+    options.currentTime = this.model.get('currentTime');
+    options.volume = session.get('tvVolume');
+    this.movie.set('playback', 'playing');
+    ddp.apply('playVideo', [this.movie.toJSON(), options], function(err){
+      if (err) console.log(err);
+    });
+  }
 };
 
 Playback.prototype.toggleLocalPlayback = function(){
-	if (!this.model.get('isPlaying')) {
-		if (!this.video){
-			var $video = dom('<video></video>');
-			var src = this.movie.get('torrent')
-				? '/stream/'
-				: '/videos/';
+  if (!this.model.get('isPlaying')) {
+    if (!this.video){
+      var $video = dom('<video></video>');
+      var src = this.movie.get('torrent')
+        ? '/stream/'
+        : '/videos/';
 
-			$video.src(src + this.movie.id);
-			this.$el
-				.find('#main-playback')
-				.empty()
-				.addClass('video')
-				.append($video);
-			this.video = $video.get();
-			this.videoEvents = events(this.video, this);
-			this.videoEvents.bind('pause', 'onpause');
-			this.videoEvents.bind('error', 'onpause');
-			this.videoEvents.bind('ended', 'onpause');
-		}
-		this.model.set('isPlaying', true);
-		dom('.zoom-background').addClass('fade');
-		this.video.play();
-		this.setVolume(session.get('volume'));
-		this.tempEvents = events(document, this);
-		this.tempEvents.bind('click', 'toggleLocalPlayback');
-	} else {
-		this.model.set('isPlaying', false);
-		this.tempEvents.unbind();
-		this.video.pause();
-	}
+      $video.src(src + this.movie.id);
+      this.$el
+        .find('#main-playback')
+        .empty()
+        .addClass('video')
+        .append($video);
+      this.video = $video.get();
+      this.videoEvents = events(this.video, this);
+      this.videoEvents.bind('pause', 'onpause');
+      this.videoEvents.bind('error', 'onpause');
+      this.videoEvents.bind('ended', 'onpause');
+    }
+    this.model.set('isPlaying', true);
+    dom('.zoom-background').addClass('fade');
+    this.video.play();
+    this.setVolume(session.get('volume'));
+    this.tempEvents = events(document, this);
+    this.tempEvents.bind('click', 'toggleLocalPlayback');
+  } else {
+    this.model.set('isPlaying', false);
+    this.tempEvents.unbind();
+    this.video.pause();
+  }
 };
 
 Playback.prototype.onpause = function(){
-	if (session.get('playbackDevice') === 'local') {
-		this.model.set('isPlaying', false);
-		dom('.zoom-background').removeClass('fade');
-	}
+  if (session.get('playbackDevice') === 'local') {
+    this.model.set('isPlaying', false);
+    dom('.zoom-background').removeClass('fade');
+  }
 };
 
 Playback.prototype.image_url = function(){
-	return '/movies/w342' + this.movie.get('original_poster_path');;
+  return '/movies/w342' + this.movie.get('original_poster_path');;
 };
 
 Playback.prototype.close = function(){
-	this.$el.remove();
-	if (this.videoEvents) this.videoEvents.unbind();
-	this.stopListening();
+  this.$el.remove();
+  if (this.videoEvents) this.videoEvents.unbind();
+  this.stopListening();
 };
 
 
@@ -22805,14 +22839,17 @@ var currentVideoView = new CurrentlyPlayingView();
 dom('#library-control').append(currentVideoView.$el);
 
 currentVideo.on('change', function(){
-  if (_.isEmpty(currentVideo.attributes)){
+  console.log('currentVideo changed', currentVideo.toJSON())
+  if (!currentVideo.get('playback')) {
     currentVideoView.hide();
     return;
   }
+  // if (_.isEmpty(currentVideo.attributes || !currentVideo.get('playback'))){
+  //   currentVideoView.hide();
+  //   return;
+  // }
   currentVideoView.render(currentVideo).show();
 });
-
-console.log('CURRENT VIDEO', currentVideo);
 
 function CurrentlyPlayingView(){
   this.$el = dom('<div></div>').id('currently-playing');
@@ -23074,85 +23111,10 @@ var Session = require('session');
 
 // xxx rethink this. pretty bad...
 
-(function(){
 
-  var $footer = document.getElementById('footer');
-  var movieView, previousMovie;
-  var MovieView = require('movie');
-  var collection = require('collections');
-
-  var updateStore = function(model){
-    console.log('updating store', model);
-    Session.set('selected_movie', Session.get('selected_movie'), {
-      silent: true
-    });
-  }
-
-  function showMovie(val){
-    if (!val) $footer.classList.add('hidden');
-    if (previousMovie) {
-      previousMovie.off('change', updateStore);
-      if (movieView) movieView.close();
-    }
-    if (val){
-      if (!(val instanceof Model)) {
-        collection.add(val);
-        val = collection.get(val._id);
-      }
-      val.on('change', updateStore);
-      previousMovie = val;
-      movieView = new MovieView(val).render();
-      $footer.appendChild(movieView.$el.get());
-      $footer.classList.remove('hidden');
-    }
-  }
-
-  Session.on('change:selected_movie', showMovie);
-  var holdover = Session.get('selected_movie');
-  if (holdover) showMovie(holdover);
-
-})();
 
 require('current_playback');
-
-/////////////////////////////
-// Handle Current Playback //
-/////////////////////////////
-
-// (function(){
-
-//   var CurrentlyPlayingView = require('current_playback');
-//   var parent = document.getElementById('library-control');
-//   var currentPlaybackView;
-//   var collection = require('collections');
-
-//   var updateStore = function(model){
-//     Session.set('current_playback', Session.get('current_playback'), {
-//       silent: true
-//     });
-//   }
-
-//   function showPlay(val){
-//     if (currentPlaybackView) currentPlaybackView.close();
-//     if (val){
-//       if (!(val instanceof Model)) {
-//         collection.add(val);
-//         val = collection.get(val._id);
-//       }
-//       val.isPlaying = true;
-//       val.on('change', updateStore);
-//       currentPlaybackView = new CurrentlyPlayingView(val);
-//       parent.appendChild(currentPlaybackView.$el.get());
-//       currentPlaybackView.show();
-//     }
-//   }
-
-//   Session.on('change:current_playback', showPlay);
-//   var holdover = Session.get('current_playback');
-//   if (holdover) showPlay(holdover);
-
-// })();
-
+require('movie');
 require('image_zoom');
 });
 require.register("rasputin/jade-runtime.js", function(exports, require, module){
@@ -23370,7 +23332,7 @@ exports.rethrow = function rethrow(err, filename, lineno){
 
 
 require.register("library/templates/movie.jade", function(exports, require, module){
-module.exports = 'if locals.original_poster_path\n	.images\n		i.icon-close\n		.img-container\n			if locals.is_phone\n				img(src=image_path + locals.original_poster_path, width=\'85\', height=\'122\')\n			else\n				img(src=image_path + locals.original_poster_path, width=\'130\', height=\'195\')\n	p.name=locals.title\n	if locals.runtime\n		p.meta=locals.runtime + \' Minutes\'\nelse\n	.image-placeholder.images\n		i.icon-close\n		.img-container\n			i.icon-question\n	p.name=locals.title || locals.file_name';
+module.exports = 'if locals.original_poster_path\n	.images\n		i.icon-close\n		if locals.is_phone\n			img(src=image_path + locals.original_poster_path, width=\'85\', height=\'122\')\n		else\n			img(src=image_path + locals.original_poster_path, width=\'130\', height=\'195\')\n		.img-container\n	p.name=locals.title\n	if locals.runtime\n		p.meta=locals.runtime + \' Minutes\'\nelse\n	.image-placeholder.images\n		i.icon-close\n		i.icon-question\n		.img-container\n	p.name=locals.title || locals.file_name';
 });
 require.register("library/templates/library.jade", function(exports, require, module){
 module.exports = 'ul.swipe-list\n	li.library.swipe-item\n	li.detail.swipe-item dsafsdakfsadf sadkfjasdlfjdsa;';
@@ -23426,7 +23388,7 @@ require.register("bmcmahen-slider/template.html", function(exports, require, mod
 module.exports = '<div class=\'slider\'>\n	<a href=\'#\' class=\'slider-min-value\'>0</a>\n	<div class=\'slider-range\'>\n		<input type=\'range\'/>\n	</div>\n	<a href=\'#\' class=\'slider-max-value\'>10</a>\n</div>';
 });
 require.register("movie/templates/playback.html", function(exports, require, module){
-module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>Pi</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<div class=\'slider volume\' disable-if-not=\'isPlaying\'>\n				<a href=\'#\' class=\'slider-min-value\'>\n					<i class=\'icon-volume-mute\'></i>\n				</a>\n				<div class=\'slider-range\'>\n					<input type=\'range\'/>\n				</div>\n				<a href=\'#\' class=\'slider-max-value\'>\n					<i class=\'icon-volume-high\'></i>\n				</a>\n			</div>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
+module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>TV</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<div class=\'slider volume\' disable-if-not=\'isPlaying\'>\n				<a href=\'#\' class=\'slider-min-value\'>\n					<i class=\'icon-volume-mute\'></i>\n				</a>\n				<div class=\'slider-range\'>\n					<input type=\'range\'/>\n				</div>\n				<a href=\'#\' class=\'slider-max-value\'>\n					<i class=\'icon-volume-high\'></i>\n				</a>\n			</div>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
 module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';

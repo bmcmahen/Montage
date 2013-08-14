@@ -3,16 +3,11 @@ var ddp = require('../sockets').ddp;
 
 var dom = require('dom');
 var events = require('events');
-var reactive = require('reactive');
 var bind = require('event');
 var loading = require('loading');
 var EmitterManager = require('emitter-manager');
 var onload = require('onload');
-var fullscreen = require('fullscreen');
-var Toggle = require('toggle');
-var Slider = require('slider');
 
-// Session.setDefault('playbackDevice', 'raspberrypi');
 
 
 var Playback = require('./playback');
@@ -184,3 +179,46 @@ function SearchResult(model, json){
   }
 }
 
+/////////////////
+// Controller  //
+/////////////////
+
+
+
+(function(){
+  var Model = require('backbone').Model;
+  var $footer = dom('#footer');
+  var movieView, previousMovie;
+  var collection = require('../collections/movies');
+
+  var updateStore = function(model){
+    Session.set('selected_movie', Session.get('selected_movie'), {
+      silent: true
+    });
+  }
+
+  function showMovie(val){
+    if (!val) $footer.addClass('hidden');
+    if (previousMovie) {
+      previousMovie.off('change', updateStore);
+      if (movieView) movieView.close();
+    }
+    if (val){
+      if (!(val instanceof Model)) {
+        collection.add(val);
+        val = collection.get(val._id);
+      }
+      val.on('change', updateStore);
+      previousMovie = val;
+      movieView = new TabView(val).render();
+      $footer
+      	.removeClass('hidden')
+      	.append(movieView.$el);
+    }
+  }
+
+  Session.on('change:selected_movie', showMovie);
+  var holdover = Session.get('selected_movie');
+  if (holdover) showMovie(holdover);
+
+})();

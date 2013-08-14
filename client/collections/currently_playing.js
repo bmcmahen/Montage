@@ -13,11 +13,13 @@ var CurrentlyPlaying = Model.extend({
 	},
 
 	handleSubscription: function(doc){
+		if (!doc) return;
 		this.attributes = doc[0];
 		this.trigger('change');
 	},
 
 	movieChanged: function(doc){
+		console.log('movie changed!', doc);
 		this.attributes = doc;
 		this.trigger('change');
 	}

@@ -676,14 +676,6 @@ MovieItem.prototype.bind = function(){
     self.holding = true;
     self.enterEditMode();
   });
-  // this.hammer = new Hammer(this.$el);
-  // var self = this;
-  // this.hammer.onhold = function(e){
-  //   e.originalEvent.preventDefault();
-  //   e.originalEvent.stopPropagation();
-  //   self.holding = true;
-  //   self.enterEditMode();
-  // }
 };
 
 MovieItem.prototype.deleteMovie = function(e){
@@ -755,6 +747,7 @@ MovieItem.prototype.changePoster = function(){
 };
 
 MovieItem.prototype.selectMovie = function(e){
+  console.log('select movie');
   // e.preventDefault();
   e.stopPropagation();
   if (this.holding){

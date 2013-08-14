@@ -84,83 +84,8 @@ var Session = require('session');
 
 // xxx rethink this. pretty bad...
 
-(function(){
 
-  var $footer = document.getElementById('footer');
-  var movieView, previousMovie;
-  var MovieView = require('movie');
-  var collection = require('collections');
-
-  var updateStore = function(model){
-    console.log('updating store', model);
-    Session.set('selected_movie', Session.get('selected_movie'), {
-      silent: true
-    });
-  }
-
-  function showMovie(val){
-    if (!val) $footer.classList.add('hidden');
-    if (previousMovie) {
-      previousMovie.off('change', updateStore);
-      if (movieView) movieView.close();
-    }
-    if (val){
-      if (!(val instanceof Model)) {
-        collection.add(val);
-        val = collection.get(val._id);
-      }
-      val.on('change', updateStore);
-      previousMovie = val;
-      movieView = new MovieView(val).render();
-      $footer.appendChild(movieView.$el.get());
-      $footer.classList.remove('hidden');
-    }
-  }
-
-  Session.on('change:selected_movie', showMovie);
-  var holdover = Session.get('selected_movie');
-  if (holdover) showMovie(holdover);
-
-})();
 
 require('current_playback');
-
-/////////////////////////////
-// Handle Current Playback //
-/////////////////////////////
-
-// (function(){
-
-//   var CurrentlyPlayingView = require('current_playback');
-//   var parent = document.getElementById('library-control');
-//   var currentPlaybackView;
-//   var collection = require('collections');
-
-//   var updateStore = function(model){
-//     Session.set('current_playback', Session.get('current_playback'), {
-//       silent: true
-//     });
-//   }
-
-//   function showPlay(val){
-//     if (currentPlaybackView) currentPlaybackView.close();
-//     if (val){
-//       if (!(val instanceof Model)) {
-//         collection.add(val);
-//         val = collection.get(val._id);
-//       }
-//       val.isPlaying = true;
-//       val.on('change', updateStore);
-//       currentPlaybackView = new CurrentlyPlayingView(val);
-//       parent.appendChild(currentPlaybackView.$el.get());
-//       currentPlaybackView.show();
-//     }
-//   }
-
-//   Session.on('change:current_playback', showPlay);
-//   var holdover = Session.get('current_playback');
-//   if (holdover) showPlay(holdover);
-
-// })();
-
+require('movie');
 require('image_zoom');

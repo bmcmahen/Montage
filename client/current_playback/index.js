@@ -8,14 +8,17 @@ var currentVideoView = new CurrentlyPlayingView();
 dom('#library-control').append(currentVideoView.$el);
 
 currentVideo.on('change', function(){
-  if (_.isEmpty(currentVideo.attributes)){
+  console.log('currentVideo changed', currentVideo.toJSON())
+  if (!currentVideo.get('playback')) {
     currentVideoView.hide();
     return;
   }
+  // if (_.isEmpty(currentVideo.attributes || !currentVideo.get('playback'))){
+  //   currentVideoView.hide();
+  //   return;
+  // }
   currentVideoView.render(currentVideo).show();
 });
-
-console.log('CURRENT VIDEO', currentVideo);
 
 function CurrentlyPlayingView(){
   this.$el = dom('<div></div>').id('currently-playing');

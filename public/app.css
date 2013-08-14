@@ -955,36 +955,30 @@ img {
   transition: transform 0.1s linear;
 }
 
-.movie-thumb:active .images .icon-close {
-  -ms-transform: scale(0.92);
-  -moz-transform: scale(0.92);
-  -webkit-transform: scale(0.92);
-  transform: scale(0.92);
-}
-
 .images .icon-close:active {
   background: #555;
 }
 
 .images.edit .icon-close {
   display: block;
+  z-index: 1200;
 }
 
 @-webkit-keyframes wobble {
   0% {
-    -webkit-transform: translateX(0%) rotate(0deg) scale(0.95);
+    -webkit-transform: translateX(0%) rotate(0deg);
   }
 
   25% {
-    -webkit-transform: translateX(-1%) rotate(-1deg) scale(0.95);
+    -webkit-transform: translateX(-1%) rotate(-1deg);
   }
 
   75% {
-    -webkit-transform: translateX(1%) rotate(1deg) scale(0.95);
+    -webkit-transform: translateX(1%) rotate(1deg);
   }
 
   100% {
-    -webkit-transform: translateX(0%) rotate(0deg) scale(0.95);
+    -webkit-transform: translateX(0%) rotate(0deg);
   }
 }
 
@@ -1013,13 +1007,6 @@ img {
   -moz-transition: opacity 0.3s linear, transform 0.1s linear;
   -webkit-transition: opacity 0.3s linear, transform 0.1s linear;
   transition: opacity 0.3s linear, transform 0.1s linear;
-}
-
-.movie-thumb:active img.onload {
-  -ms-transform: scale(0.92);
-  -moz-transform: scale(0.92);
-  -webkit-transform: scale(0.92);
-  transform: scale(0.92);
 }
 
 .movie-thumb img.onload {
@@ -1148,6 +1135,20 @@ img.preload {
   position: relative;
 }
 
+.img-container {
+  background: rgba(0, 0, 0, 0);
+  z-index: 1100;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.movie-thumb:active .img-container {
+  background: rgba(0, 0, 0, 0.3);
+}
+
 .sort-wrapper {
   margin: 10px;
   position: relative;
@@ -1221,37 +1222,37 @@ p.meta {
 
 @-ms-keyframes wobble {
   0% {
-    -webkit-transform: translateX(0%) rotate(0deg) scale(0.95);
+    -webkit-transform: translateX(0%) rotate(0deg);
   }
 
   25% {
-    -webkit-transform: translateX(-1%) rotate(-1deg) scale(0.95);
+    -webkit-transform: translateX(-1%) rotate(-1deg);
   }
 
   75% {
-    -webkit-transform: translateX(1%) rotate(1deg) scale(0.95);
+    -webkit-transform: translateX(1%) rotate(1deg);
   }
 
   100% {
-    -webkit-transform: translateX(0%) rotate(0deg) scale(0.95);
+    -webkit-transform: translateX(0%) rotate(0deg);
   }
 }
 
 @-moz-keyframes wobble {
   0% {
-    -webkit-transform: translateX(0%) rotate(0deg) scale(0.95);
+    -webkit-transform: translateX(0%) rotate(0deg);
   }
 
   25% {
-    -webkit-transform: translateX(-1%) rotate(-1deg) scale(0.95);
+    -webkit-transform: translateX(-1%) rotate(-1deg);
   }
 
   75% {
-    -webkit-transform: translateX(1%) rotate(1deg) scale(0.95);
+    -webkit-transform: translateX(1%) rotate(1deg);
   }
 
   100% {
-    -webkit-transform: translateX(0%) rotate(0deg) scale(0.95);
+    -webkit-transform: translateX(0%) rotate(0deg);
   }
 }
 ul.swipe-wrapper {
@@ -2598,6 +2599,7 @@ a.more:hover {
   width: 100%;
   z-index: 200;
   height: 100%;
+  padding-left: 0;
 }
 
 video {
@@ -2874,7 +2876,7 @@ video {
 
 
 #currently-playing {
-  padding: 5px 8px;
+  padding: 4px 10px;
   color: rgb(107, 107, 107);
   margin: 7px;
   position: absolute;
@@ -2958,7 +2960,7 @@ video {
 }
 
 .zoom-background.in {
-  -webkit-animation: opacity-anim 0.3s ease-out;
+  -webkit-animation: opacity-anim 0.3s linear;
 }
 
 .zoom-background.in:before {
@@ -2980,7 +2982,7 @@ video {
 }
 
 .zoom-background.out {
-  -webkit-animation: opacity-anim-out 0.3s ease-out;
+  -webkit-animation: opacity-anim-out 0.3s linear;
 }
 
 @-webkit-keyframes opacity-anim {
