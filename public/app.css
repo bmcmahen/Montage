@@ -2976,6 +2976,14 @@ button.btn:active {
   -webkit-animation: opacity-anim 0.3s linear;
 }
 
+.zoom-background.no-zoom.in {
+  -webkit-animation: none;
+  -ms-transition: none;
+  -moz-transition: none;
+  -webkit-transition: none;
+  transition: none;
+}
+
 .zoom-background.in:before {
   position: absolute;
   left: 0;
