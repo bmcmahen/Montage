@@ -16,6 +16,7 @@ var Hammer = require('hammer');
 var addEvent = require('event');
 var BackgroundZoom = require('background-zoom');
 var hold = require('hold');
+var ddp = require('../sockets').ddp;
 
 var Chunk = require('./chunks').Chunk;
 var ChunkCollection = require('./chunks').ChunkCollection;
@@ -682,6 +683,7 @@ MovieItem.prototype.deleteMovie = function(e){
   e.preventDefault();
   e.stopPropagation();
   this.model.collection.remove(this.model);
+  ddp.call('ignoreVideo', this.model.toJSON());
   this.exitEdit();
 };
 
@@ -768,6 +770,7 @@ MovieItem.prototype.selectMovie = function(e){
       width: BOX_WIDTH
     },
     url : backdrop,
+    model: self.model,
     fn : function(zoom){
       zoom.on('showing', function(){
         setTimeout(function(){

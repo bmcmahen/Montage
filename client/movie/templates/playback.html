@@ -15,7 +15,7 @@
 		</div>
 		<div id='movie-tv-playback' data-show='isTV'>
 			<div class='tv-control' data-show='TVplaybackStarted'></div>
-			<div class='movie-meta-2' data-hide='TVPlaybackStarted'></div>
+			<div class='movie-meta-2' data-hide='TVplaybackStarted'></div>
 		</div>
 	</div>
 
@@ -37,21 +37,14 @@
 				<i class='icon-forward-2'></i>
 			</a>
 		</div>
-		<div class='controls post'>
-			<div class='slider volume' disable-if-not='isPlaying'>
-				<a href='#' class='slider-min-value'>
-					<i class='icon-volume-mute'></i>
-				</a>
-				<div class='slider-range'>
-					<input type='range'/>
-				</div>
-				<a href='#' class='slider-max-value'>
-					<i class='icon-volume-high'></i>
-				</a>
-			</div>
+		<div class='controls post' disable-if-not='isPlaying'>
+			<button class='btn transparent' on-click='volumeDown'>
+				<i class='icon-minus'></i>
+			</button>
+			<button class='btn transparent' on-click='volumeUp'>
+				<i class='icon-plus'></i>
+			</button>
 		</div>
-
-
 	</div>
 
 </div>

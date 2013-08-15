@@ -3,7 +3,6 @@ var events = require('events');
 var reactive = require('reactive');
 var fullscreen = require('fullscreen');
 var Toggle = require('toggle');
-var Slider = require('slider');
 var EmitterManager = require('emitter-manager');
 var Model = require('backbone').Model;
 
@@ -143,7 +142,6 @@ function Playback(movie){
   this.$el.find('.tv-control').append(this.$tvEl);
 
   this.createToggle();
-  this.createVolume();
   this.listen();
 }
 
@@ -151,7 +149,6 @@ EmitterManager(Playback.prototype);
 
 Playback.prototype.listen = function(){
   this.listenTo(this.toggle, 'change', this.togglePlayback);
-  this.listenTo(this.volume, 'change:value', this.setVolume);
 }
 
 Playback.prototype.createToggle = function(){
@@ -174,7 +171,6 @@ Playback.prototype.togglePlayback = function(){
   // that our local video (if it exists) is paused.
   if (otherDevice === 'tv'){
     if (this.video){
-      dom('.zoom-background').removeClass('fade');
       if (this.tempEvents) this.tempEvents.unbind();
       this.video.pause();
     }
@@ -184,41 +180,45 @@ Playback.prototype.togglePlayback = function(){
     } else {
       this.model.set('isPlaying', false);
     }
-    this.volume.setValue(session.get('tvVolume'));
 
   // When switching from TV to Local, make sure
   // that our play button is paused. Also, switch our
   // volume indicator to Local volume.
   } else {
     this.model.set('isPlaying', false);
-    this.volume.setValue(session.get('volume'));
   }
 };
 
-Playback.prototype.createVolume = function(){
-  var el = this.$el.find('.volume').get();
-  this.volume = new Slider(null, el)
-    .range(0, 10)
-    .step(1);
 
-  // set our initial value.
-  var val = (session.get('playbackDevice') === 'tv')
-    ? session.get('tvVolume')
-    : session.get('volume');
-
-  this.volume.setValue(val);
-};
-
-Playback.prototype.setVolume = function(val, prev){
+Playback.prototype.volumeUp = function(e){
+  e.preventDefault();
   if (session.get('playbackDevice') === 'tv') {
-    session.set('tvVolume', val);
-    if (val > prev) ddp.call('volumeUp');
-    else ddp.call('volumeDown');
+    ddp.call('volumeUp');
+    var vol = (session.get('tvVolume') + 1) > 9
+      ? session.get('tvVolume') + 1
+      : 10;
+    session.set('tvVolume', vol);
   } else {
-    session.set('volume', val);
-    this.video.volume = (val / 10);
+    this.video.volume = (this.video.volume + 0.1) > 1
+      ? 1 : this.video.volume + 0.1;
+    session.set('volume', this.video.volume);
   }
 };
+
+Playback.prototype.volumeDown = function(e){
+  e.preventDefault();
+  if (session.get('playbackDevice') === 'tv') {
+    ddp.call('volumeDown');
+    var vol = (session.get('tvVolume') - 1) >= 0
+      ? session.get('tvVolume') - 1
+      : 0;
+    session.set('tvVolume', vol);
+  } else {
+    this.video.volume = (this.video.volume - 0.1) < 0
+      ? 0 : this.video.volume - 0.1;
+    session.set('volume', this.video.volume);
+  }
+}
 
 Playback.prototype.oncontrolclick = function(e){
   e.stopPropagation();
@@ -277,7 +277,7 @@ Playback.prototype.toggleTVPlayback = function(){
     options['-l'] = this.model.get('currentTime');
     options['--vol'] = session.get('tvVolume');
     this.movie.set('playback', 'playing');
-    this.model.set('playbackStarted', true);
+    this.model.set('TVplaybackStarted', true);
     ddp.apply('playVideo', [this.movie.toJSON(), options], function(err){
       if (err) console.log(err);
     });
@@ -307,9 +307,8 @@ Playback.prototype.toggleLocalPlayback = function(){
     }
     this.model.set('isPlaying', true);
     this.model.set('localPlaybackStarted', true);
-    dom('.zoom-background').addClass('fade');
     this.video.play();
-    this.setVolume(session.get('volume'));
+    this.video.volume = session.get('volume');
     this.tempEvents = events(document, this);
     this.tempEvents.bind('click', 'toggleLocalPlayback');
   } else {
@@ -319,17 +318,15 @@ Playback.prototype.toggleLocalPlayback = function(){
   }
 };
 
-Playback.prototype.onerror = function(){
-  console.log("ERROR");
+Playback.prototype.onerror = function(err){
+  if (err) console.log("ERROR", err);
   this.model.set('isPlaying', false);
   this.model.set('localPlaybackStarted', false);
-  dom('.zoom-background').removeClass('fade');
 };
 
 Playback.prototype.onpause = function(){
   if (session.get('playbackDevice') === 'local') {
     this.model.set('isPlaying', false);
-    dom('.zoom-background').removeClass('fade');
   }
 };
 
@@ -339,7 +336,7 @@ Playback.prototype.image_url = function(){
 
 Playback.prototype.quitMovie = function(e){
   console.log('quit movie!');
-  ddp.call('quitMovie');
+  ddp.call('stopVideo');
   this.model.set('isPlaying', false);
   this.model.set('TVplaybackStarted', false);
 };

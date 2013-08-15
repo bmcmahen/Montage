@@ -2652,12 +2652,17 @@ video {
   width: 15px;
 }
 
-.movie-info {
-  padding-top: 30px;
-}
-
 .movie-info .btn.center {
   margin: 0 auto;
+}
+
+.tv-control {
+  padding-top: 40px;
+}
+
+button.btn:active {
+  background: #bbb;
+  color: white;
 }
 
 @-ms-keyframes fadeIn {
@@ -4028,6 +4033,7 @@ a.btn {
   transition: opacity 0.3s ease-out;
 }
 
+.disabled button.btn,
 button.btn.disabled,
 a.btn.disabled {
   opacity: 0.2;

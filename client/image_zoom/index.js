@@ -16,6 +16,15 @@ function zoom(val){
 	if (currentZoom) currentZoom.hide();
 	if (val) {
 		currentZoom = constructZoom(val.origin, val.url, val.fn);
+		if (val.model){
+			val.model.on('change:original_backdrop_path', function(model, img){
+				if (img) {
+					$container
+						.find('.zoom-background')
+						.css('background-image', 'url("/movies/w1280'+img+'")');
+				}
+			});
+		}
 		return;
 	}
 }

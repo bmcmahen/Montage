@@ -51,7 +51,7 @@ var Movies = Collection.extend({
   // Listen to our subscriptions, and update accordingly.
   initialize: function(){
     this.initialLoad = true;
-    subscriptions.on('movies', this.set.bind(this));
+    subscriptions.on('movies', this.setMovies.bind(this));
     subscriptions.on('movies:added', this.addMovie.bind(this));
     subscriptions.on('movies:changed', this.changeMovie.bind(this));
     subscriptions.on('movies:removed', this.remove.bind(this));
@@ -68,6 +68,17 @@ var Movies = Collection.extend({
         this.onTV = null;
         this.trigger('notCurrentlyPlaying');
       }
+    }
+  },
+
+  setMovies: function(movies){
+    this.set(movies);
+    var currentMovie = this.find(function(vid){
+      return vid.get('playback');
+    });
+    if (currentMovie && currentMovie != this.onTV) {
+      this.onTV = currentMovie;
+      this.trigger('currentlyPlaying', currentMovie, currentMovie.get('playback'));
     }
   },
 

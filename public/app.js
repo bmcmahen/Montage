@@ -16003,7 +16003,7 @@ var Movies = Collection.extend({
   // Listen to our subscriptions, and update accordingly.
   initialize: function(){
     this.initialLoad = true;
-    subscriptions.on('movies', this.set.bind(this));
+    subscriptions.on('movies', this.setMovies.bind(this));
     subscriptions.on('movies:added', this.addMovie.bind(this));
     subscriptions.on('movies:changed', this.changeMovie.bind(this));
     subscriptions.on('movies:removed', this.remove.bind(this));
@@ -16020,6 +16020,17 @@ var Movies = Collection.extend({
         this.onTV = null;
         this.trigger('notCurrentlyPlaying');
       }
+    }
+  },
+
+  setMovies: function(movies){
+    this.set(movies);
+    var currentMovie = this.find(function(vid){
+      return vid.get('playback');
+    });
+    if (currentMovie && currentMovie != this.onTV) {
+      this.onTV = currentMovie;
+      this.trigger('currentlyPlaying', currentMovie, currentMovie.get('playback'));
     }
   },
 
@@ -18047,6 +18058,7 @@ var Hammer = require('hammer');
 var addEvent = require('event');
 var BackgroundZoom = require('background-zoom');
 var hold = require('hold');
+var ddp = require('../sockets').ddp;
 
 var Chunk = require('./chunks').Chunk;
 var ChunkCollection = require('./chunks').ChunkCollection;
@@ -18713,6 +18725,7 @@ MovieItem.prototype.deleteMovie = function(e){
   e.preventDefault();
   e.stopPropagation();
   this.model.collection.remove(this.model);
+  ddp.call('ignoreVideo', this.model.toJSON());
   this.exitEdit();
 };
 
@@ -18799,6 +18812,7 @@ MovieItem.prototype.selectMovie = function(e){
       width: BOX_WIDTH
     },
     url : backdrop,
+    model: self.model,
     fn : function(zoom){
       zoom.on('showing', function(){
         setTimeout(function(){
@@ -22351,7 +22365,6 @@ var events = require('events');
 var reactive = require('reactive');
 var fullscreen = require('fullscreen');
 var Toggle = require('toggle');
-var Slider = require('slider');
 var EmitterManager = require('emitter-manager');
 var Model = require('backbone').Model;
 
@@ -22491,7 +22504,6 @@ function Playback(movie){
   this.$el.find('.tv-control').append(this.$tvEl);
 
   this.createToggle();
-  this.createVolume();
   this.listen();
 }
 
@@ -22499,7 +22511,6 @@ EmitterManager(Playback.prototype);
 
 Playback.prototype.listen = function(){
   this.listenTo(this.toggle, 'change', this.togglePlayback);
-  this.listenTo(this.volume, 'change:value', this.setVolume);
 }
 
 Playback.prototype.createToggle = function(){
@@ -22522,7 +22533,6 @@ Playback.prototype.togglePlayback = function(){
   // that our local video (if it exists) is paused.
   if (otherDevice === 'tv'){
     if (this.video){
-      dom('.zoom-background').removeClass('fade');
       if (this.tempEvents) this.tempEvents.unbind();
       this.video.pause();
     }
@@ -22532,41 +22542,45 @@ Playback.prototype.togglePlayback = function(){
     } else {
       this.model.set('isPlaying', false);
     }
-    this.volume.setValue(session.get('tvVolume'));
 
   // When switching from TV to Local, make sure
   // that our play button is paused. Also, switch our
   // volume indicator to Local volume.
   } else {
     this.model.set('isPlaying', false);
-    this.volume.setValue(session.get('volume'));
   }
 };
 
-Playback.prototype.createVolume = function(){
-  var el = this.$el.find('.volume').get();
-  this.volume = new Slider(null, el)
-    .range(0, 10)
-    .step(1);
 
-  // set our initial value.
-  var val = (session.get('playbackDevice') === 'tv')
-    ? session.get('tvVolume')
-    : session.get('volume');
-
-  this.volume.setValue(val);
-};
-
-Playback.prototype.setVolume = function(val, prev){
+Playback.prototype.volumeUp = function(e){
+  e.preventDefault();
   if (session.get('playbackDevice') === 'tv') {
-    session.set('tvVolume', val);
-    if (val > prev) ddp.call('volumeUp');
-    else ddp.call('volumeDown');
+    ddp.call('volumeUp');
+    var vol = (session.get('tvVolume') + 1) > 9
+      ? session.get('tvVolume') + 1
+      : 10;
+    session.set('tvVolume', vol);
   } else {
-    session.set('volume', val);
-    this.video.volume = (val / 10);
+    this.video.volume = (this.video.volume + 0.1) > 1
+      ? 1 : this.video.volume + 0.1;
+    session.set('volume', this.video.volume);
   }
 };
+
+Playback.prototype.volumeDown = function(e){
+  e.preventDefault();
+  if (session.get('playbackDevice') === 'tv') {
+    ddp.call('volumeDown');
+    var vol = (session.get('tvVolume') - 1) >= 0
+      ? session.get('tvVolume') - 1
+      : 0;
+    session.set('tvVolume', vol);
+  } else {
+    this.video.volume = (this.video.volume - 0.1) < 0
+      ? 0 : this.video.volume - 0.1;
+    session.set('volume', this.video.volume);
+  }
+}
 
 Playback.prototype.oncontrolclick = function(e){
   e.stopPropagation();
@@ -22625,7 +22639,7 @@ Playback.prototype.toggleTVPlayback = function(){
     options['-l'] = this.model.get('currentTime');
     options['--vol'] = session.get('tvVolume');
     this.movie.set('playback', 'playing');
-    this.model.set('playbackStarted', true);
+    this.model.set('TVplaybackStarted', true);
     ddp.apply('playVideo', [this.movie.toJSON(), options], function(err){
       if (err) console.log(err);
     });
@@ -22655,9 +22669,8 @@ Playback.prototype.toggleLocalPlayback = function(){
     }
     this.model.set('isPlaying', true);
     this.model.set('localPlaybackStarted', true);
-    dom('.zoom-background').addClass('fade');
     this.video.play();
-    this.setVolume(session.get('volume'));
+    this.video.volume = session.get('volume');
     this.tempEvents = events(document, this);
     this.tempEvents.bind('click', 'toggleLocalPlayback');
   } else {
@@ -22667,17 +22680,15 @@ Playback.prototype.toggleLocalPlayback = function(){
   }
 };
 
-Playback.prototype.onerror = function(){
-  console.log("ERROR");
+Playback.prototype.onerror = function(err){
+  if (err) console.log("ERROR", err);
   this.model.set('isPlaying', false);
   this.model.set('localPlaybackStarted', false);
-  dom('.zoom-background').removeClass('fade');
 };
 
 Playback.prototype.onpause = function(){
   if (session.get('playbackDevice') === 'local') {
     this.model.set('isPlaying', false);
-    dom('.zoom-background').removeClass('fade');
   }
 };
 
@@ -22687,7 +22698,7 @@ Playback.prototype.image_url = function(){
 
 Playback.prototype.quitMovie = function(e){
   console.log('quit movie!');
-  ddp.call('quitMovie');
+  ddp.call('stopVideo');
   this.model.set('isPlaying', false);
   this.model.set('TVplaybackStarted', false);
 };
@@ -23068,6 +23079,15 @@ function zoom(val){
 	if (currentZoom) currentZoom.hide();
 	if (val) {
 		currentZoom = constructZoom(val.origin, val.url, val.fn);
+		if (val.model){
+			val.model.on('change:original_backdrop_path', function(model, img){
+				if (img) {
+					$container
+						.find('.zoom-background')
+						.css('background-image', 'url("/movies/w1280'+img+'")');
+				}
+			});
+		}
 		return;
 	}
 }
@@ -23456,7 +23476,7 @@ require.register("bmcmahen-slider/template.html", function(exports, require, mod
 module.exports = '<div class=\'slider\'>\n	<a href=\'#\' class=\'slider-min-value\'>0</a>\n	<div class=\'slider-range\'>\n		<input type=\'range\'/>\n	</div>\n	<a href=\'#\' class=\'slider-max-value\'>10</a>\n</div>';
 });
 require.register("movie/templates/playback.html", function(exports, require, module){
-module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>TV</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div id=\'movie-local-playback\' data-show=\'isLocal\'>\n			<div class=\'video-wrapper\' data-show=\'localPlaybackStarted\'></div>\n			<div class=\'movie-meta-1\' data-hide="localPlaybackStarted"></div>\n		</div>\n		<div id=\'movie-tv-playback\' data-show=\'isTV\'>\n			<div class=\'tv-control\' data-show=\'TVplaybackStarted\'></div>\n			<div class=\'movie-meta-2\' data-hide=\'TVPlaybackStarted\'></div>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\'>\n			<div class=\'slider volume\' disable-if-not=\'isPlaying\'>\n				<a href=\'#\' class=\'slider-min-value\'>\n					<i class=\'icon-volume-mute\'></i>\n				</a>\n				<div class=\'slider-range\'>\n					<input type=\'range\'/>\n				</div>\n				<a href=\'#\' class=\'slider-max-value\'>\n					<i class=\'icon-volume-high\'></i>\n				</a>\n			</div>\n		</div>\n\n\n	</div>\n\n</div>\n\n\n';
+module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>TV</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div id=\'movie-local-playback\' data-show=\'isLocal\'>\n			<div class=\'video-wrapper\' data-show=\'localPlaybackStarted\'></div>\n			<div class=\'movie-meta-1\' data-hide="localPlaybackStarted"></div>\n		</div>\n		<div id=\'movie-tv-playback\' data-show=\'isTV\'>\n			<div class=\'tv-control\' data-show=\'TVplaybackStarted\'></div>\n			<div class=\'movie-meta-2\' data-hide=\'TVplaybackStarted\'></div>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\' disable-if-not=\'isPlaying\'>\n			<button class=\'btn transparent\' on-click=\'volumeDown\'>\n				<i class=\'icon-minus\'></i>\n			</button>\n			<button class=\'btn transparent\' on-click=\'volumeUp\'>\n				<i class=\'icon-plus\'></i>\n			</button>\n		</div>\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
 module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
@@ -23471,7 +23491,7 @@ require.register("movie/templates/movieinfo.html", function(exports, require, mo
 module.exports = '<div class=\'poster\'>\n	<div id=\'poster-image\'>\n		<img data-src=\'image_url < original_poster_path\'></img>\n	</div>\n</div>\n<div class=\'movie-info\'>\n	<h2> { title || file_name }</h2>\n</div>';
 });
 require.register("movie/templates/tvplayback.html", function(exports, require, module){
-module.exports = '<div class=\'movie-info\'>\n	<h2>Current Movie: { title || file_name }</h2>\n	<button class=\'btn center\' on-click=\'quitMovie\'>Quit Player</button>\n</div>';
+module.exports = '<div class=\'movie-info\'>\n	<h2>Currently Playing: { title || file_name }</h2>\n	<button class=\'btn center\' on-click=\'quitMovie\'>Quit Player</button>\n</div>';
 });
 
 require.register("modal/templates/torrent.jade", function(exports, require, module){
