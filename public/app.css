@@ -1202,8 +1202,8 @@ p.meta {
 
 @media (max-width : 480px) {
   .movie-thumb {
-    width: 85px;
-    height: 142px;
+    width: 90px;
+    height: 165px;
   }
 
   .movie-thumb p.meta {
@@ -1219,11 +1219,13 @@ p.meta {
 
   .movie-thumb p.name {
     font-size: 12px;
+    margin: 5px 0;
+    padding: 0;
   }
 
   .images {
-    width: 85px;
-    height: 114px;
+    width: 90px;
+    height: 140px;
   }
 }
 
@@ -2101,7 +2103,12 @@ a.torrent i {
 }
 
 a.more:active {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+a.more:active i {
+  color: #333;
+  text-shadow: none;
 }
 
 #footer .flex {
@@ -2286,7 +2293,7 @@ a.control.back i {
 
 .controls.pre,
 .controls.post {
-  width: 30%;
+  width: 25%;
   padding: 18px 0 0 0;
 }
 
@@ -2301,7 +2308,7 @@ a.control.back i {
 .controls {
   text-align: center;
   float: left;
-  width: 40%;
+  width: 50%;
   -ms-box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -2693,6 +2700,18 @@ button.btn:active {
   color: white;
 }
 
+@media (min-height: 700px) {
+  .movie-detail .full {
+    padding-top: 40px;
+  }
+}
+
+@media (min-height: 800px) {
+  .movie-detail .full {
+    padding-top: 100px;
+  }
+}
+
 @-ms-keyframes fadeIn {
   0% {
     opacity: 0;
@@ -2913,6 +2932,41 @@ button.btn:active {
 
 #toggle {
   text-align: center;
+}
+
+@media (max-width : 480px) {
+  #footer .poster {
+    min-height: 100px;
+  }
+
+  #main-playback {
+    min-height: 180px;
+  }
+
+  #toggle .toggle {
+    height: 30px;
+    width: 60px;
+  }
+
+  #toggle .toggle-button {
+    line-height: 30px;
+    width: 30px;
+  }
+
+  #toggle .toggle-on-label {
+    left: 0;
+    width: 30px;
+  }
+
+  #toggle .toggle-off-label {
+    right: 0;
+    left: 30px;
+  }
+
+  #toggle .toggle-on-label,
+  .toggle-off-label {
+    line-height: 30px;
+  }
 }
 .tip {
   background: white;
@@ -3507,6 +3561,14 @@ you can use the generic selector below, but it's slower:
 	pointer-events: none;
 }
 
+@media (max-width : 480px) {
+	.tabs li a {
+		width: 80px;
+		font-size: 12px;
+	}
+}
+
+
 .center-text {
 	text-align: center;
 }
@@ -3663,6 +3725,20 @@ div.help-text {
   margin: 10px 0;
   color: rgb(117, 117, 117);
 }
+
+@media (max-width : 480px) {
+  input[type='text'],
+  input[type='number'] {
+    min-width: 130px;
+    font-size: 12px;
+  }
+
+  input[type='submit'] {
+    font-size: 12px;
+  }
+
+}
+
 ul.list-group {
 	padding-left: 0;
 	max-width: 400px;
@@ -3866,7 +3942,7 @@ input {
 }
 
 #toggle-drawer:active {
-  background: rgba(0, 0, 0, 0.10);
+  background: rgba(0, 0, 0, 0.50);
 }
 
 #body {
@@ -3878,6 +3954,10 @@ input {
   margin: 0;
   -webkit-overflow-scrolling: touch;
   -webkit-perspective: 1000;
+}
+
+#toggle-drawer:active span.icon-bar {
+  background: #eee;
 }
 
 span.icon-bar {

@@ -18091,16 +18091,16 @@ function changeVariables(width, height){
 
   width = width || $(window).width();
   height = height || $(window).height();
-  height -= 50;
+  height -= 60;
 
   CONTAINER_WIDTH = width;
   CONTAINER_HEIGHT = height;
 
   // phone (roughly)
   if (width < 480) {
-    BOX_WIDTH = 85;
-    BOX_HEIGHT = 140;
-    PADDING_WIDTH = 15;
+    BOX_WIDTH = 100;
+    BOX_HEIGHT = 165;
+    PADDING_WIDTH = 10;
     PADDING_HEIGHT = 10;
     IS_PHONE = true;
 
@@ -18671,7 +18671,7 @@ function MovieItem(model){
 
 MovieItem.prototype.render = function(){
   var imagePath = '/movies/w154';
-  if (window.devicePixelRatio === 2) imagePath = '/movies/w342';
+  if (window.devicePixelRatio === 2 && !IS_PHONE) imagePath = '/movies/w342';
   var json = this.model.toJSON();
   if (IS_PHONE) json.is_phone = true;
   json.image_path = imagePath;
@@ -18842,7 +18842,13 @@ MovieItem.prototype.removeView = function(){
 MovieItem.prototype.updatePosition = function(pos, fn){
   this.pos = pos;
   var $el = this.$el;
-  translate($el, pos.left, pos.top);
+  if (IS_PHONE) {
+    var s = $el.style;
+    s.top = pos.top + 'px';
+    s.left = pos.left + 'px';
+  } else {
+    translate($el, pos.left, pos.top);
+  }
   if (fn) fn(this);
 };
 
@@ -19123,7 +19129,7 @@ if ( locals.original_poster_path)
 buf.push("<div class=\"images\"><i class=\"icon-close\"></i>");
 if ( locals.is_phone)
 {
-buf.push("<img" + (jade.attrs({ 'src':(image_path + locals.original_poster_path), 'width':('85'), 'height':('122') }, {"src":true,"width":true,"height":true})) + "/>");
+buf.push("<img" + (jade.attrs({ 'src':(image_path + locals.original_poster_path), 'width':('90'), 'height':('140') }, {"src":true,"width":true,"height":true})) + "/>");
 }
 else
 {
@@ -23601,7 +23607,7 @@ function constructZoom(origin, url, fn, options){
 		.setDimensions('100%', '100%')
 		.className('zoom-background')
 		.target(left, top, width, height)
-		.origin(origin.left, origin.top + 130, origin.width, originHeight);
+		.origin(origin.left, origin.top + 70, origin.width, originHeight);
 
 	if (options.noanimate) {
 		zoom.className('no-zoom');
@@ -23922,7 +23928,7 @@ exports.rethrow = function rethrow(err, filename, lineno){
 
 
 require.register("library/templates/movie.jade", function(exports, require, module){
-module.exports = 'if locals.original_poster_path\n	.images\n		i.icon-close\n		if locals.is_phone\n			img(src=image_path + locals.original_poster_path, width=\'85\', height=\'122\')\n		else\n			img(src=image_path + locals.original_poster_path, width=\'130\', height=\'195\')\n		.img-container\n	p.name=locals.title\n	if locals.runtime\n		p.meta=locals.runtime + \' Minutes\'\nelse\n	.image-placeholder.images\n		i.icon-close\n		i.icon-question\n		.img-container\n	p.name=locals.title || locals.file_name';
+module.exports = 'if locals.original_poster_path\n	.images\n		i.icon-close\n		if locals.is_phone\n			img(src=image_path + locals.original_poster_path, width=\'90\', height=\'140\')\n		else\n			img(src=image_path + locals.original_poster_path, width=\'130\', height=\'195\')\n		.img-container\n	p.name=locals.title\n	if locals.runtime\n		p.meta=locals.runtime + \' Minutes\'\nelse\n	.image-placeholder.images\n		i.icon-close\n		i.icon-question\n		.img-container\n	p.name=locals.title || locals.file_name';
 });
 require.register("library/templates/library.jade", function(exports, require, module){
 module.exports = 'ul.swipe-list\n	li.library.swipe-item\n	li.detail.swipe-item dsafsdakfsadf sadkfjasdlfjdsa;';
@@ -23982,13 +23988,13 @@ require.register("movie/templates/playback.html", function(exports, require, mod
 module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>TV</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div id=\'movie-local-playback\' data-show=\'isLocal\'>\n			<div class=\'video-wrapper\' data-show=\'localPlaybackStarted\'></div>\n			<div class=\'movie-meta-1\' data-hide="localPlaybackStarted"></div>\n		</div>\n		<div id=\'movie-tv-playback\' data-show=\'isTV\'>\n			<div class=\'tv-control\' data-show=\'TVplaybackStarted\'></div>\n			<div class=\'movie-meta-2\' data-hide=\'TVplaybackStarted\'></div>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\' disable-if-not=\'isPlaying\'>\n			<button class=\'btn transparent\' on-click=\'volumeDown\'>\n				<i class=\'icon-minus\'></i>\n			</button>\n			<button class=\'btn transparent\' on-click=\'volumeUp\'>\n				<i class=\'icon-plus\'></i>\n			</button>\n		</div>\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
-module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
+module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
 });
 require.register("movie/templates/meta-search-result.jade", function(exports, require, module){
 module.exports = 'li.list-group-item\n	a=locals.title + \' [\'+locals.release_date+\']\'\n	i.loader.pull-right\n';
 });
 require.register("movie/templates/meta.html", function(exports, require, module){
-module.exports = '<div class=\'span6 offset3\'>\n	<div class=\'row\'>\n		<div class=\'span12 center-text\'>\n			<form id=\'meta-search\' class=\'inline-block inline\'>\n				<input type=\'text\' class=\'search-title\' placeholder=\'Movie Title\'><input type=\'submit\' value=\'Find Movie\'>\n			</form>\n		</div>\n	</div>\n	<div class=\'row\'>\n		<div class=\'span10 offset1\'>\n			<i class=\'loader light\'></i>\n			<ul id=\'search-results\' class=\'list-group\'>\n			</ul>\n		</div>\n	</div>';
+module.exports = '<div class=\'span12\'>\n	<div class=\'row\'>\n		<div class=\'span12 center-text\'>\n			<form id=\'meta-search\' class=\'inline-block inline\'>\n				<input type=\'text\' class=\'search-title\' placeholder=\'Movie Title\'><input type=\'submit\' value=\'Find Movie\'>\n			</form>\n		</div>\n	</div>\n	<div class=\'row\'>\n		<div class=\'span10 offset1\'>\n			<i class=\'loader light\'></i>\n			<ul id=\'search-results\' class=\'list-group\'>\n			</ul>\n		</div>\n	</div>';
 });
 require.register("movie/templates/movieinfo.html", function(exports, require, module){
 module.exports = '<div class=\'poster\'>\n	<div id=\'poster-image\'>\n		<img data-src=\'image_url < original_poster_path\'></img>\n	</div>\n</div>\n<div class=\'movie-info\'>\n	<h2> { title || file_name }</h2>\n</div>';

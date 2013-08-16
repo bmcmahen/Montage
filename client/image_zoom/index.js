@@ -42,7 +42,7 @@ function constructZoom(origin, url, fn, options){
 		.setDimensions('100%', '100%')
 		.className('zoom-background')
 		.target(left, top, width, height)
-		.origin(origin.left, origin.top + 130, origin.width, originHeight);
+		.origin(origin.left, origin.top + 70, origin.width, originHeight);
 
 	if (options.noanimate) {
 		zoom.className('no-zoom');

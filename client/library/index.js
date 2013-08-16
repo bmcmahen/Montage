@@ -49,16 +49,16 @@ function changeVariables(width, height){
 
   width = width || $(window).width();
   height = height || $(window).height();
-  height -= 50;
+  height -= 60;
 
   CONTAINER_WIDTH = width;
   CONTAINER_HEIGHT = height;
 
   // phone (roughly)
   if (width < 480) {
-    BOX_WIDTH = 85;
-    BOX_HEIGHT = 140;
-    PADDING_WIDTH = 15;
+    BOX_WIDTH = 100;
+    BOX_HEIGHT = 165;
+    PADDING_WIDTH = 10;
     PADDING_HEIGHT = 10;
     IS_PHONE = true;
 
@@ -629,7 +629,7 @@ function MovieItem(model){
 
 MovieItem.prototype.render = function(){
   var imagePath = '/movies/w154';
-  if (window.devicePixelRatio === 2) imagePath = '/movies/w342';
+  if (window.devicePixelRatio === 2 && !IS_PHONE) imagePath = '/movies/w342';
   var json = this.model.toJSON();
   if (IS_PHONE) json.is_phone = true;
   json.image_path = imagePath;
@@ -800,7 +800,13 @@ MovieItem.prototype.removeView = function(){
 MovieItem.prototype.updatePosition = function(pos, fn){
   this.pos = pos;
   var $el = this.$el;
-  translate($el, pos.left, pos.top);
+  if (IS_PHONE) {
+    var s = $el.style;
+    s.top = pos.top + 'px';
+    s.left = pos.left + 'px';
+  } else {
+    translate($el, pos.left, pos.top);
+  }
   if (fn) fn(this);
 };
 

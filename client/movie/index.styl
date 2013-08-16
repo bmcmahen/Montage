@@ -62,7 +62,12 @@
 }
 
 a.more:active {
-  background: rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.4);
+}
+
+a.more:active i {
+  color: #333;
+  text-shadow: none;
 }
 
 #footer .flex {
@@ -208,7 +213,7 @@ a.control.back i {
 
 .controls.pre,
 .controls.post {
-  width: 30%;
+  width: 25%;
   padding: 18px 0 0 0;
 }
 
@@ -224,7 +229,7 @@ a.control.back i {
 .controls {
   text-align: center;
   float: left;
-  width: 40%;
+  width: 50%;
   box-sizing: border-box;
 }
 
@@ -570,4 +575,17 @@ video {
 button.btn:active {
   background: #bbb;
   color: white;
+}
+
+
+@media (min-height: 700px) {
+  .movie-detail .full {
+    padding-top: 40px;
+  }
+}
+
+@media (min-height: 800px) {
+  .movie-detail .full {
+    padding-top: 100px;
+  }
 }
