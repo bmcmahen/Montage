@@ -23347,10 +23347,10 @@ module.exports = function anonymous(locals
 /**/) {
 var buf = [];
 with (locals || {}) {
-buf.push("<div class=\"md-content\"><h3>Download Torrent</h3><div class=\"md-body\"><p>Title:<span>" + (((jade.interp = locals.title) == null ? '' : jade.interp)) + "</span></p><p>Leachers:<span>" + (jade.escape(null == (jade.interp = locals.leachers) ? "" : jade.interp)) + "</span></p><p>Seeds:<span>" + (jade.escape(null == (jade.interp = locals.seeds) ? "" : jade.interp)) + "</span></p><p>Size:<span>" + (jade.escape(null == (jade.interp = locals.size) ? "" : jade.interp)) + "</span></p><div>");
+buf.push("<div class=\"md-content\"><h3>Download Torrent</h3><div class=\"md-body\"><dl class=\"dl-horizontal\"><dt>Title</dt><dd>" + (((jade.interp = locals.title) == null ? '' : jade.interp)) + "</dd><dt>Leechers</dt><dd>" + (jade.escape(null == (jade.interp = locals.leechers) ? "" : jade.interp)) + "</dd><dt>Seeds</dt><dd>" + (jade.escape(null == (jade.interp = locals.seeds) ? "" : jade.interp)) + "</dd><dt>File Size</dt><dd>" + (jade.escape(null == (jade.interp = locals.size) ? "" : jade.interp)) + "</dd>");
 if ( locals.sources)
 {
-buf.push("<p>Download Location</p><select>");
+buf.push("<dt>Download Location</dt><dd><select>");
 // iterate locals.sources
 ;(function(){
   var $$obj = locals.sources;
@@ -23375,9 +23375,9 @@ buf.push("<option>" + (jade.escape(null == (jade.interp = source.path) ? "" : ja
   }
 }).call(this);
 
-buf.push("</select>");
+buf.push("</select></dd>");
 }
-buf.push("</div></div><div class=\"md-footer clearfix\"><button class=\"md-close btn dismiss\">Cancel</button><button class=\"md-download btn primary\">Download</button></div></div>");
+buf.push("</dl></div><div class=\"md-footer clearfix\"><button class=\"md-close btn dismiss\">Cancel</button><button class=\"md-download btn primary\">Download</button></div></div>");
 }
 return buf.join("");
 }
@@ -24007,7 +24007,7 @@ module.exports = '<form class=\'inline-block inline\'>\n	<input type=\'number\' 
 });
 
 require.register("modal/templates/torrent.jade", function(exports, require, module){
-module.exports = '.md-content\n	h3 Download Torrent\n	div.md-body\n		p Title:\n			span !{locals.title}\n		p Leachers:\n			span=locals.leachers\n		p Seeds:\n			span=locals.seeds\n		p Size:\n			span=locals.size\n		div\n			if locals.sources\n				p Download Location\n				select\n					each source in locals.sources\n						option=source.path\n	div.md-footer.clearfix\n		button.md-close.btn.dismiss Cancel\n		button.md-download.btn.primary Download\n';
+module.exports = '.md-content\n	h3 Download Torrent\n	div.md-body\n		dl.dl-horizontal\n			dt Title\n			dd !{locals.title}\n			dt Leechers\n			dd=locals.leechers\n			dt Seeds\n			dd=locals.seeds\n			dt File Size\n			dd=locals.size\n			if locals.sources\n				dt Download Location\n				dd\n					select\n						each source in locals.sources\n							option=source.path\n	div.md-footer.clearfix\n		button.md-close.btn.dismiss Cancel\n		button.md-download.btn.primary Download\n';
 });
 require.register("modal/templates/network.jade", function(exports, require, module){
 module.exports = '.md-content\n	h3 Add Network Source\n	div.md-body\n		form\n			label Server Address and Path\n				input.network-path(type=\'text\')\n\n\n	div.md-footer.clearfix\n		button.md-close.btn.dismiss Cancel\n		button.add-source.btn.primary Add Network Source\n';

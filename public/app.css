@@ -3848,6 +3848,34 @@ ul.list-group {
 	color: #333;
 }
 
+dl {
+	margin-bottom: 20px;
+	font-family: 'helvetica neue';
+	font-size: 13px;
+}
+
+.dl-horizontal dt {
+	float: left;
+	width: 160px;
+	overflow: hidden;
+	clear: left;
+	text-align: right;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dl-horizontal dd {
+	margin-left: 180px;
+}
+
+dt {
+	font-weight: bold;
+}
+
+dt, dd {
+	line-height: 1.9em;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -4076,15 +4104,16 @@ span.main-title {
 .md-content h3 {
   margin: 0;
   padding: 1.4em;
+  padding-bottom: 0;
   display: block;
   opacity: 1;
   -ms-filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=100);
   filter: alpha(opacity=100);
   font-family: 'helvetica neue';
   text-align: center;
-  background: #7A466B;
   font-weight: 600;
-  color: white;
+  color: rgb(107, 107, 107);
+  font-size: 17px;
   -ms-border-radius: 0;
   -moz-border-radius: 0;
   -webkit-border-radius: 0;
@@ -4195,7 +4224,7 @@ a.btn.small {
 
 button.btn.primary,
 a.btn.primary {
-  background: rgb(46, 146, 214);
+  background: #79A6CC;
   color: white;
 }
 
