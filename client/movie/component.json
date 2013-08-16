@@ -12,7 +12,9 @@
     "component/fullscreen": "1.0.0",
     "segmentio/toggle": "*",
     "bmcmahen/slider": "*",
-    "bmcmahen/backbone": "*"
+    "bmcmahen/backbone": "*",
+    "bmcmahen/hold": "*",
+    "component/tip" : "*"
   },
   "license": "MIT",
   "main": "index.js",
@@ -22,7 +24,8 @@
   ],
   "styles": [
     "index.styl",
-    "toggle.styl"
+    "toggle.styl",
+    "tip.styl"
   ],
   "locals": [
     "session",
@@ -34,6 +37,7 @@
     "templates/meta-search-result.jade",
     "templates/meta.html",
     "templates/movieinfo.html",
-    "templates/tvplayback.html"
+    "templates/tvplayback.html",
+    "templates/seekTo.html"
   ]
 }

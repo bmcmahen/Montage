@@ -639,6 +639,9 @@ MovieItem.prototype.render = function(){
   if (this.model.get('torrent')){
     this.showProgress();
   }
+  if (this.model.get('file_missing')){
+    this.$el.classList.add('file-missing');
+  }
   return this;
 };
 
@@ -671,6 +674,9 @@ MovieItem.prototype.bind = function(){
   if (this.model.get('torrent')) {
     this.listen.on(this.model, 'change:torrent', this.showProgress.bind(this));
   }
+  this.listen.on(this.model, 'change:file_missing', function(){
+    self.$el.classList.remove('file-missing');
+  })
   this.events = events(this.$el, this);
   this.events.bind('click', 'selectMovie');
   hold(this.$el, function(e){
@@ -731,9 +737,7 @@ MovieItem.prototype.changePoster = function(){
       $(self.$el).find('.img-container').html(img);
     }
     img.onerror = function(err){
-      console.log('error');
       setTimeout(function(){
-        console.log('trying again...');
         if (loadCounts > 3) return;
         loadImage();
         loadCounts++;
@@ -749,9 +753,12 @@ MovieItem.prototype.changePoster = function(){
 };
 
 MovieItem.prototype.selectMovie = function(e){
-  console.log('select movie');
   // e.preventDefault();
   e.stopPropagation();
+  if (this.model.get('file_missing')) {
+    return;
+  }
+
   if (this.holding){
     this.holding = false;
     return;

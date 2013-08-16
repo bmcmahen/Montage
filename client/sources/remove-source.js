@@ -4,6 +4,7 @@ var EmitterManger = require('emitter-manager');
 var _ = require('underscore');
 var inherit = require('inherit');
 var ddp = require('sockets').ddp;
+var loading = require('loading');
 
 var List = require('./listing');
 
@@ -30,14 +31,24 @@ RemoveSourceView.prototype.render = function(){
 };
 
 RemoveSourceView.prototype.bind = function(){
-	console.log(this.sources);
+	this.events = events(this.$el.get(), this);
+	this.events.bind('click button.btn', 'resyncLibrary');
 	this.listenTo(this.sources, 'add', this.render);
 	this.listenTo(this.sources, 'remove', this.render);
+
 };
 
 RemoveSourceView.prototype.close = function(){
 	this.stopListening();
+	this.events.unbind();
 	this.$el.remove();
+};
+
+RemoveSourceView.prototype.resyncLibrary = function(e){
+	var loader = loading(dom('#spinner').get());
+	ddp.call('syncLibrary', function(err, res){
+		loader.finish();
+	});
 };
 
 RemoveSourceView.prototype.listItemSelected = function(itemModel){

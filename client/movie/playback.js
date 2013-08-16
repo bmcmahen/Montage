@@ -5,6 +5,9 @@ var fullscreen = require('fullscreen');
 var Toggle = require('toggle');
 var EmitterManager = require('emitter-manager');
 var Model = require('backbone').Model;
+var hold = require('hold');
+var Tip = require('tip');
+var eventListener = require('event');
 
 var session = require('../session');
 var ddp = require('../sockets').ddp;
@@ -141,7 +144,12 @@ function Playback(movie){
   this.reactiveTVPlay = reactive(this.$tvEl.get(), this.movie, this);
   this.$el.find('.tv-control').append(this.$tvEl);
 
+  // Playback popover
+  this.popover = new Tip(dom(require('./templates/seekTo.html')).get());
+  this.popover.position('south');
+
   this.createToggle();
+  this.bind();
   this.listen();
 }
 
@@ -149,6 +157,64 @@ EmitterManager(Playback.prototype);
 
 Playback.prototype.listen = function(){
   this.listenTo(this.toggle, 'change', this.togglePlayback);
+}
+
+Playback.prototype.bind = function(){
+  var self = this;
+  hold(this.$el.find('.play').get(), this.timeToggle.bind(this));
+  var self = this;
+  hold(this.$el.find('.forward').get(), function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    self.holding = true;
+    self.forward(null, 60);
+  });
+  hold(this.$el.find('.back').get(), function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    self.holding = true;
+    self.rewind(null, 60);
+  });
+};
+
+Playback.prototype.timeToggle = function(e){
+  e.preventDefault();
+  e.stopPropagation();
+  this.holding = true;
+  this.popover.show(this.$el.find('.play').get());
+
+  // setup popover events, and tear them down when finished.
+  var el = this.popover.el[0];
+  var form = dom(el).find('form').get();
+  form.querySelector('.time').focus();
+  var self = self = this;
+
+  var startAtPosition = function(e){
+    e.preventDefault();
+    var time = dom(form).find('.time').val();
+    self.play(null, time);
+    teardown();
+  };
+
+  var teardown = function(e){
+    eventListener.unbind(document, 'click', teardown);
+    eventListener.unbind(form, 'submit', startAtPosition);
+    eventListener.unbind(el.querySelector('.submit'), 'click', cancelEvent);
+    eventListener.unbind(el.querySelector('.time'), 'click', cancelEvent);
+    self.popover.remove();
+  };
+
+  var cancelEvent = function(e){
+    console.log('cancel!');
+    e.stopPropagation();
+    // e.preventDefault();
+  };
+
+  eventListener.bind(form, 'submit', startAtPosition);
+  eventListener.bind(el.querySelector('.time'), 'click', cancelEvent);
+  eventListener.bind(el.querySelector('.submit'), 'click', cancelEvent);
+  eventListener.bind(document, 'click', teardown);
+
 }
 
 Playback.prototype.createToggle = function(){
@@ -163,6 +229,7 @@ Playback.prototype.togglePlayback = function(){
   var otherDevice = (session.get('playbackDevice') === 'tv')
     ? 'local'
     : 'tv';
+
   session.set('playbackDevice', otherDevice);
 
   // When switchin from Local to TV, make sure that our
@@ -229,25 +296,39 @@ Playback.prototype.toggleSubtitles = function(){
   ddp.call('toggleSubtitles');
 };
 
-Playback.prototype.forward = function(e){
-  e.preventDefault();
-  e.stopPropagation();
+Playback.prototype.forward = function(e, time){
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  if (this.holding && !time){
+    this.holding = false;
+    return;
+  }
   if (session.get('playbackDevice') === 'local'){
     if (!this.video) return;
-    this.video.currentTime += 30;
+    this.video.currentTime += 30 || time;
   } else {
-    ddp.call('forwardVideo');
+    if (time) ddp.call('nextChapter');
+    else ddp.call('forwardVideo');
   }
 };
 
-Playback.prototype.rewind = function(e){
-  e.preventDefault();
-  e.stopPropagation();
+Playback.prototype.rewind = function(e, time){
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  if (this.holding && !time){
+    this.holding = false;
+    return;
+  }
   if (session.get('playbackDevice') === 'local'){
     if (!this.video) return;
-    this.video.currentTime -= 30;
+    this.video.currentTime -= 30 || time;
   } else {
-    ddp.call('backwardVideo');
+    if (time) ddp.call('previousChapter');
+    else ddp.call('backwardVideo');
   }
 }
 
@@ -259,12 +340,16 @@ Playback.prototype.toggleFullscreen = function(e){
   }
 };
 
-Playback.prototype.play = function(e){
-  if (session.get('playbackDevice') === 'tv') this.toggleTVPlayback();
-  else this.toggleLocalPlayback();
+Playback.prototype.play = function(e, time){
+  if (this.holding){
+    this.holding = false;
+    return;
+  }
+  if (session.get('playbackDevice') === 'tv') this.toggleTVPlayback(time);
+  else this.toggleLocalPlayback(time);
 };
 
-Playback.prototype.toggleTVPlayback = function(){
+Playback.prototype.toggleTVPlayback = function(time){
   if (this.model.get('isPlaying')) {
     this.movie.set('playback', 'paused');
     ddp.call('pauseVideo', this.movie.toJSON(), function(err){
@@ -274,7 +359,7 @@ Playback.prototype.toggleTVPlayback = function(){
     var options = {};
     // this should be normalized so that it's compatible w/
     // different players.
-    options['-l'] = this.model.get('currentTime');
+    options['-l'] = time || this.model.get('currentTime');
     options['--vol'] = session.get('tvVolume');
     this.movie.set('playback', 'playing');
     this.model.set('TVplaybackStarted', true);
@@ -284,7 +369,7 @@ Playback.prototype.toggleTVPlayback = function(){
   }
 };
 
-Playback.prototype.toggleLocalPlayback = function(){
+Playback.prototype.toggleLocalPlayback = function(time){
   if (!this.model.get('isPlaying')) {
     if (!this.video){
       var $video = dom('<video></video>');
@@ -293,10 +378,12 @@ Playback.prototype.toggleLocalPlayback = function(){
         : '/videos/';
 
       this.video = $video.get();
+      this.metadataloaded = false;
       this.videoEvents = events(this.video, this);
       this.videoEvents.bind('pause', 'onpause');
       this.videoEvents.bind('error', 'onerror');
       this.videoEvents.bind('ended', 'onerror');
+      this.videoEvents.bind('loadedmetadata', 'onload', time);
 
       $video.src(src + this.movie.id);
       this.$el
@@ -308,6 +395,9 @@ Playback.prototype.toggleLocalPlayback = function(){
     this.model.set('isPlaying', true);
     this.model.set('localPlaybackStarted', true);
     this.video.play();
+    if (this.metadataloaded && time) {
+      this.video.currentTime = time * 60;
+    }
     this.video.volume = session.get('volume');
     this.tempEvents = events(document, this);
     this.tempEvents.bind('click', 'toggleLocalPlayback');
@@ -317,6 +407,12 @@ Playback.prototype.toggleLocalPlayback = function(){
     this.video.pause();
   }
 };
+
+Playback.prototype.onload = function(e, time){
+  console.log('onload!', time, this.video);
+  this.metadataloaded = true;
+  if (time && this.video) this.video.currentTime = time * 60;
+}
 
 Playback.prototype.onerror = function(err){
   if (err) console.log("ERROR", err);

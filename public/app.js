@@ -18681,6 +18681,9 @@ MovieItem.prototype.render = function(){
   if (this.model.get('torrent')){
     this.showProgress();
   }
+  if (this.model.get('file_missing')){
+    this.$el.classList.add('file-missing');
+  }
   return this;
 };
 
@@ -18713,6 +18716,9 @@ MovieItem.prototype.bind = function(){
   if (this.model.get('torrent')) {
     this.listen.on(this.model, 'change:torrent', this.showProgress.bind(this));
   }
+  this.listen.on(this.model, 'change:file_missing', function(){
+    self.$el.classList.remove('file-missing');
+  })
   this.events = events(this.$el, this);
   this.events.bind('click', 'selectMovie');
   hold(this.$el, function(e){
@@ -18773,9 +18779,7 @@ MovieItem.prototype.changePoster = function(){
       $(self.$el).find('.img-container').html(img);
     }
     img.onerror = function(err){
-      console.log('error');
       setTimeout(function(){
-        console.log('trying again...');
         if (loadCounts > 3) return;
         loadImage();
         loadCounts++;
@@ -18791,9 +18795,12 @@ MovieItem.prototype.changePoster = function(){
 };
 
 MovieItem.prototype.selectMovie = function(e){
-  console.log('select movie');
   // e.preventDefault();
   e.stopPropagation();
+  if (this.model.get('file_missing')) {
+    return;
+  }
+
   if (this.holding){
     this.holding = false;
     return;
@@ -19383,6 +19390,7 @@ var EmitterManger = require('emitter-manager');
 var _ = require('underscore');
 var inherit = require('inherit');
 var ddp = require('sockets').ddp;
+var loading = require('loading');
 
 var List = require('./listing');
 
@@ -19409,14 +19417,24 @@ RemoveSourceView.prototype.render = function(){
 };
 
 RemoveSourceView.prototype.bind = function(){
-	console.log(this.sources);
+	this.events = events(this.$el.get(), this);
+	this.events.bind('click button.btn', 'resyncLibrary');
 	this.listenTo(this.sources, 'add', this.render);
 	this.listenTo(this.sources, 'remove', this.render);
+
 };
 
 RemoveSourceView.prototype.close = function(){
 	this.stopListening();
+	this.events.unbind();
 	this.$el.remove();
+};
+
+RemoveSourceView.prototype.resyncLibrary = function(e){
+	var loader = loading(dom('#spinner').get());
+	ddp.call('syncLibrary', function(err, res){
+		loader.finish();
+	});
 };
 
 RemoveSourceView.prototype.listItemSelected = function(itemModel){
@@ -22130,6 +22148,388 @@ Slider.prototype.step = function(step) {
 	return this;
 };
 });
+require.register("component-tip/index.js", function(exports, require, module){
+
+/**
+ * Module dependencies.
+ */
+
+var Emitter = require('emitter');
+var o = require('jquery');
+
+/**
+ * Expose `Tip`.
+ */
+
+module.exports = Tip;
+
+/**
+ * Apply the average use-case of simply
+ * showing a tool-tip on `el` hover.
+ *
+ * Options:
+ *
+ *  - `delay` hide delay in milliseconds [0]
+ *  - `value` defaulting to the element's title attribute
+ *
+ * @param {Mixed} el
+ * @param {Object|String} options or value
+ * @api public
+ */
+
+function tip(el, options) {
+  if ('string' == typeof options) options = { value : options };
+  options = options || {};
+  var delay = options.delay;
+
+  o(el).each(function(i, el){
+    el = o(el);
+    var val = options.value || el.attr('title');
+    var tip = new Tip(val);
+    el.attr('title', '');
+    tip.cancelHideOnHover(delay);
+    tip.attach(el, delay);
+  });
+}
+
+/**
+ * Initialize a `Tip` with the given `content`.
+ *
+ * @param {Mixed} content
+ * @api public
+ */
+
+function Tip(content, options) {
+  if (!(this instanceof Tip)) return tip(content, options);
+  Emitter.call(this);
+  this.classname = '';
+  this.el = o(require('./template'));
+  this.inner = this.el.find('.tip-inner');
+  Tip.prototype.message.call(this, content);
+  this.position('south');
+  if (Tip.effect) this.effect(Tip.effect);
+}
+
+/**
+ * Mixin emitter.
+ */
+
+Emitter(Tip.prototype);
+
+/**
+ * Set tip `content`.
+ *
+ * @param {String|jQuery|Element} content
+ * @return {Tip} self
+ * @api public
+ */
+
+Tip.prototype.message = function(content){
+  this.inner.empty().append(content);
+  return this;
+};
+
+/**
+ * Attach to the given `el` with optional hide `delay`.
+ *
+ * @param {Element} el
+ * @param {Number} delay
+ * @return {Tip}
+ * @api public
+ */
+
+Tip.prototype.attach = function(el, delay){
+  var self = this;
+  o(el).hover(function(){
+    self.show(el);
+    self.cancelHide();
+  }, function(){
+    self.hide(delay);
+  });
+  return this;
+};
+
+/**
+ * Cancel hide on hover, hide with the given `delay`.
+ *
+ * @param {Number} delay
+ * @return {Tip}
+ * @api public
+ */
+
+Tip.prototype.cancelHideOnHover = function(delay){
+  this.el.hover(
+    this.cancelHide.bind(this),
+    this.hide.bind(this, delay));
+  return this;
+};
+
+/**
+ * Set the effect to `type`.
+ *
+ * @param {String} type
+ * @return {Tip}
+ * @api public
+ */
+
+Tip.prototype.effect = function(type){
+  this._effect = type;
+  this.el.addClass(type);
+  return this;
+};
+
+/**
+ * Set position:
+ *
+ *  - `north`
+ *  - `north east`
+ *  - `north west`
+ *  - `south`
+ *  - `south east`
+ *  - `south west`
+ *  - `east`
+ *  - `west`
+ *
+ * @param {String} pos
+ * @param {Object} options
+ * @return {Tip}
+ * @api public
+ */
+
+Tip.prototype.position = function(pos, options){
+  options = options || {};
+  this._position = pos;
+  this._auto = false != options.auto;
+  this.replaceClass(pos);
+  return this;
+};
+
+/**
+ * Show the tip attached to `el`.
+ *
+ * Emits "show" (el) event.
+ *
+ * @param {jQuery|Element} el or x
+ * @param {Number} [y]
+ * @return {Tip}
+ * @api public
+ */
+
+Tip.prototype.show = function(el){
+  // show it
+  this.target = o(el);
+  this.el.appendTo('body');
+  this.el.addClass('tip-' + this._position);
+  this.el.removeClass('tip-hide');
+
+  // x,y
+  if ('number' == typeof el) {
+    var x = arguments[0];
+    var y = arguments[1];
+    this.emit('show');
+    this.el.css({ top: y, left: x });
+    return this;
+  }
+
+  // el
+  this.target = o(el);
+  this.reposition();
+  this.emit('show', this.target);
+  this._reposition = this.reposition.bind(this);
+  o(window).bind('resize', this._reposition);
+  o(window).bind('scroll', this._reposition);
+
+  return this;
+};
+
+/**
+ * Reposition the tip if necessary.
+ *
+ * @api private
+ */
+
+Tip.prototype.reposition = function(){
+  var pos = this._position;
+  var off = this.offset(pos);
+  var newpos = this._auto && this.suggested(pos, off);
+  if (newpos) off = this.offset(pos = newpos);
+  this.replaceClass(pos);
+  this.el.css(off);
+};
+
+/**
+ * Compute the "suggested" position favouring `pos`.
+ * Returns undefined if no suggestion is made.
+ *
+ * @param {String} pos
+ * @param {Object} offset
+ * @return {String}
+ * @api private
+ */
+
+Tip.prototype.suggested = function(pos, off){
+  var el = this.el;
+
+  var ew = el.outerWidth();
+  var eh = el.outerHeight();
+
+  var win = o(window);
+  var top = win.scrollTop();
+  var left = win.scrollLeft();
+  var w = win.width();
+  var h = win.height();
+
+  // too high
+  if (off.top < top) return 'north';
+
+  // too low
+  if (off.top + eh > top + h) return 'south';
+
+  // too far to the right
+  if (off.left + ew > left + w) return 'east';
+
+  // too far to the left
+  if (off.left < left) return 'west';
+};
+
+/**
+ * Replace position class `name`.
+ *
+ * @param {String} name
+ * @api private
+ */
+
+Tip.prototype.replaceClass = function(name){
+  name = name.split(' ').join('-');
+  this.el.attr('class', this.classname + ' tip tip-' + name + ' ' + this._effect);
+};
+
+/**
+ * Compute the offset for `.target`
+ * based on the given `pos`.
+ *
+ * @param {String} pos
+ * @return {Object}
+ * @api private
+ */
+
+Tip.prototype.offset = function(pos){
+  var pad = 15;
+  var el = this.el;
+  var target = this.target;
+
+  var ew = el.outerWidth();
+  var eh = el.outerHeight();
+
+  var to = target.offset();
+  var tw = target.outerWidth();
+  var th = target.outerHeight();
+
+  switch (pos) {
+    case 'south':
+      return {
+        top: to.top - eh,
+        left: to.left + tw / 2 - ew / 2
+      }
+    case 'north west':
+      return {
+        top: to.top + th,
+        left: to.left + tw / 2 - pad
+      }
+    case 'north east':
+      return {
+        top: to.top + th,
+        left: to.left + tw / 2 - ew + pad
+      }
+    case 'north':
+      return {
+        top: to.top + th,
+        left: to.left + tw / 2 - ew / 2
+      }
+    case 'south west':
+      return {
+        top: to.top - eh,
+        left: to.left + tw / 2 - pad
+      }
+    case 'south east':
+      return {
+        top: to.top - eh,
+        left: to.left + tw / 2 - ew + pad
+      }
+    case 'west':
+      return {
+        top: to.top + th / 2 - eh / 2,
+        left: to.left + tw
+      }
+    case 'east':
+      return {
+        top: to.top + th / 2 - eh / 2,
+        left: to.left - ew
+      }
+    default:
+      throw new Error('invalid position "' + pos + '"');
+  }
+};
+
+/**
+ * Cancel the `.hide()` timeout.
+ *
+ * @api private
+ */
+
+Tip.prototype.cancelHide = function(){
+  clearTimeout(this._hide);
+};
+
+/**
+ * Hide the tip with optional `ms` delay.
+ *
+ * Emits "hide" event.
+ *
+ * @param {Number} ms
+ * @return {Tip}
+ * @api public
+ */
+
+Tip.prototype.hide = function(ms){
+  var self = this;
+
+  // duration
+  if (ms) {
+    this._hide = setTimeout(this.hide.bind(this), ms);
+    return this;
+  }
+
+  // hide
+  this.el.addClass('tip-hide');
+  if (this._effect) {
+    setTimeout(this.remove.bind(this), 300);
+  } else {
+    self.remove();
+  }
+
+  return this;
+};
+
+/**
+ * Hide the tip without potential animation.
+ *
+ * @return {Tip}
+ * @api
+ */
+
+Tip.prototype.remove = function(){
+  o(window).unbind('resize', this._reposition);
+  o(window).unbind('scroll', this._reposition);
+  this.emit('hide');
+  this.el.detach();
+  return this;
+};
+
+});
+require.register("component-tip/template.js", function(exports, require, module){
+module.exports = '<div class="tip tip-hide">\n  <div class="tip-arrow"></div>\n  <div class="tip-inner"></div>\n</div>';
+});
 require.register("movie/index.js", function(exports, require, module){
 var Session = require('../session');
 var ddp = require('../sockets').ddp;
@@ -22367,6 +22767,9 @@ var fullscreen = require('fullscreen');
 var Toggle = require('toggle');
 var EmitterManager = require('emitter-manager');
 var Model = require('backbone').Model;
+var hold = require('hold');
+var Tip = require('tip');
+var eventListener = require('event');
 
 var session = require('../session');
 var ddp = require('../sockets').ddp;
@@ -22503,7 +22906,12 @@ function Playback(movie){
   this.reactiveTVPlay = reactive(this.$tvEl.get(), this.movie, this);
   this.$el.find('.tv-control').append(this.$tvEl);
 
+  // Playback popover
+  this.popover = new Tip(dom(require('./templates/seekTo.html')).get());
+  this.popover.position('south');
+
   this.createToggle();
+  this.bind();
   this.listen();
 }
 
@@ -22511,6 +22919,64 @@ EmitterManager(Playback.prototype);
 
 Playback.prototype.listen = function(){
   this.listenTo(this.toggle, 'change', this.togglePlayback);
+}
+
+Playback.prototype.bind = function(){
+  var self = this;
+  hold(this.$el.find('.play').get(), this.timeToggle.bind(this));
+  var self = this;
+  hold(this.$el.find('.forward').get(), function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    self.holding = true;
+    self.forward(null, 60);
+  });
+  hold(this.$el.find('.back').get(), function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    self.holding = true;
+    self.rewind(null, 60);
+  });
+};
+
+Playback.prototype.timeToggle = function(e){
+  e.preventDefault();
+  e.stopPropagation();
+  this.holding = true;
+  this.popover.show(this.$el.find('.play').get());
+
+  // setup popover events, and tear them down when finished.
+  var el = this.popover.el[0];
+  var form = dom(el).find('form').get();
+  form.querySelector('.time').focus();
+  var self = self = this;
+
+  var startAtPosition = function(e){
+    e.preventDefault();
+    var time = dom(form).find('.time').val();
+    self.play(null, time);
+    teardown();
+  };
+
+  var teardown = function(e){
+    eventListener.unbind(document, 'click', teardown);
+    eventListener.unbind(form, 'submit', startAtPosition);
+    eventListener.unbind(el.querySelector('.submit'), 'click', cancelEvent);
+    eventListener.unbind(el.querySelector('.time'), 'click', cancelEvent);
+    self.popover.remove();
+  };
+
+  var cancelEvent = function(e){
+    console.log('cancel!');
+    e.stopPropagation();
+    // e.preventDefault();
+  };
+
+  eventListener.bind(form, 'submit', startAtPosition);
+  eventListener.bind(el.querySelector('.time'), 'click', cancelEvent);
+  eventListener.bind(el.querySelector('.submit'), 'click', cancelEvent);
+  eventListener.bind(document, 'click', teardown);
+
 }
 
 Playback.prototype.createToggle = function(){
@@ -22525,6 +22991,7 @@ Playback.prototype.togglePlayback = function(){
   var otherDevice = (session.get('playbackDevice') === 'tv')
     ? 'local'
     : 'tv';
+
   session.set('playbackDevice', otherDevice);
 
   // When switchin from Local to TV, make sure that our
@@ -22591,25 +23058,39 @@ Playback.prototype.toggleSubtitles = function(){
   ddp.call('toggleSubtitles');
 };
 
-Playback.prototype.forward = function(e){
-  e.preventDefault();
-  e.stopPropagation();
+Playback.prototype.forward = function(e, time){
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  if (this.holding && !time){
+    this.holding = false;
+    return;
+  }
   if (session.get('playbackDevice') === 'local'){
     if (!this.video) return;
-    this.video.currentTime += 30;
+    this.video.currentTime += 30 || time;
   } else {
-    ddp.call('forwardVideo');
+    if (time) ddp.call('nextChapter');
+    else ddp.call('forwardVideo');
   }
 };
 
-Playback.prototype.rewind = function(e){
-  e.preventDefault();
-  e.stopPropagation();
+Playback.prototype.rewind = function(e, time){
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  if (this.holding && !time){
+    this.holding = false;
+    return;
+  }
   if (session.get('playbackDevice') === 'local'){
     if (!this.video) return;
-    this.video.currentTime -= 30;
+    this.video.currentTime -= 30 || time;
   } else {
-    ddp.call('backwardVideo');
+    if (time) ddp.call('previousChapter');
+    else ddp.call('backwardVideo');
   }
 }
 
@@ -22621,12 +23102,16 @@ Playback.prototype.toggleFullscreen = function(e){
   }
 };
 
-Playback.prototype.play = function(e){
-  if (session.get('playbackDevice') === 'tv') this.toggleTVPlayback();
-  else this.toggleLocalPlayback();
+Playback.prototype.play = function(e, time){
+  if (this.holding){
+    this.holding = false;
+    return;
+  }
+  if (session.get('playbackDevice') === 'tv') this.toggleTVPlayback(time);
+  else this.toggleLocalPlayback(time);
 };
 
-Playback.prototype.toggleTVPlayback = function(){
+Playback.prototype.toggleTVPlayback = function(time){
   if (this.model.get('isPlaying')) {
     this.movie.set('playback', 'paused');
     ddp.call('pauseVideo', this.movie.toJSON(), function(err){
@@ -22636,7 +23121,7 @@ Playback.prototype.toggleTVPlayback = function(){
     var options = {};
     // this should be normalized so that it's compatible w/
     // different players.
-    options['-l'] = this.model.get('currentTime');
+    options['-l'] = time || this.model.get('currentTime');
     options['--vol'] = session.get('tvVolume');
     this.movie.set('playback', 'playing');
     this.model.set('TVplaybackStarted', true);
@@ -22646,7 +23131,7 @@ Playback.prototype.toggleTVPlayback = function(){
   }
 };
 
-Playback.prototype.toggleLocalPlayback = function(){
+Playback.prototype.toggleLocalPlayback = function(time){
   if (!this.model.get('isPlaying')) {
     if (!this.video){
       var $video = dom('<video></video>');
@@ -22655,10 +23140,12 @@ Playback.prototype.toggleLocalPlayback = function(){
         : '/videos/';
 
       this.video = $video.get();
+      this.metadataloaded = false;
       this.videoEvents = events(this.video, this);
       this.videoEvents.bind('pause', 'onpause');
       this.videoEvents.bind('error', 'onerror');
       this.videoEvents.bind('ended', 'onerror');
+      this.videoEvents.bind('loadedmetadata', 'onload', time);
 
       $video.src(src + this.movie.id);
       this.$el
@@ -22670,6 +23157,9 @@ Playback.prototype.toggleLocalPlayback = function(){
     this.model.set('isPlaying', true);
     this.model.set('localPlaybackStarted', true);
     this.video.play();
+    if (this.metadataloaded && time) {
+      this.video.currentTime = time * 60;
+    }
     this.video.volume = session.get('volume');
     this.tempEvents = events(document, this);
     this.tempEvents.bind('click', 'toggleLocalPlayback');
@@ -22679,6 +23169,12 @@ Playback.prototype.toggleLocalPlayback = function(){
     this.video.pause();
   }
 };
+
+Playback.prototype.onload = function(e, time){
+  console.log('onload!', time, this.video);
+  this.metadataloaded = true;
+  if (time && this.video) this.video.currentTime = time * 60;
+}
 
 Playback.prototype.onerror = function(err){
   if (err) console.log("ERROR", err);
@@ -23448,7 +23944,7 @@ require.register("sources/templates/list-item-remove.jade", function(exports, re
 module.exports = 'li.list-group-item\n	a\n		span=locals.path\n		i.icon-eject.pull-right';
 });
 require.register("sources/templates/remove-source.html", function(exports, require, module){
-module.exports = '<div>\n	<ul class=\'list-group browse-content\'>\n	</ul>\n</div>';
+module.exports = '<div>\n	<div class=\'center padded\'>\n		<button class=\'btn green\'>Sync Library</button>\n	</div>\n	<ul class=\'list-group browse-content\'>\n	</ul>\n</div>';
 });
 require.register("sources/templates/network-source.html", function(exports, require, module){
 module.exports = '<div class=\'center-text\'>\n	<form class=\'inline-block\'>\n		<div class=\'inline\'>\n			<input type=\'text\' class=\'current-dir\'><input type=\'submit\' value=\'Add Network Source\'>\n		</div>\n		<div class=\'help-text\'>\n		Example: 192.168.0.15:/Volumes/Macintosh HD2/Movies/\n	</div>\n			<i class=\'loader\'></i>\n\n	</form>\n</div>';
@@ -23481,6 +23977,7 @@ module.exports = 'li.label\n	span Movies';
 require.register("bmcmahen-slider/template.html", function(exports, require, module){
 module.exports = '<div class=\'slider\'>\n	<a href=\'#\' class=\'slider-min-value\'>0</a>\n	<div class=\'slider-range\'>\n		<input type=\'range\'/>\n	</div>\n	<a href=\'#\' class=\'slider-max-value\'>10</a>\n</div>';
 });
+
 require.register("movie/templates/playback.html", function(exports, require, module){
 module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>TV</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div id=\'movie-local-playback\' data-show=\'isLocal\'>\n			<div class=\'video-wrapper\' data-show=\'localPlaybackStarted\'></div>\n			<div class=\'movie-meta-1\' data-hide="localPlaybackStarted"></div>\n		</div>\n		<div id=\'movie-tv-playback\' data-show=\'isTV\'>\n			<div class=\'tv-control\' data-show=\'TVplaybackStarted\'></div>\n			<div class=\'movie-meta-2\' data-hide=\'TVplaybackStarted\'></div>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\' disable-if-not=\'isPlaying\'>\n			<button class=\'btn transparent\' on-click=\'volumeDown\'>\n				<i class=\'icon-minus\'></i>\n			</button>\n			<button class=\'btn transparent\' on-click=\'volumeUp\'>\n				<i class=\'icon-plus\'></i>\n			</button>\n		</div>\n	</div>\n\n</div>\n\n\n';
 });
@@ -23498,6 +23995,9 @@ module.exports = '<div class=\'poster\'>\n	<div id=\'poster-image\'>\n		<img dat
 });
 require.register("movie/templates/tvplayback.html", function(exports, require, module){
 module.exports = '<div class=\'movie-info\'>\n	<h2>Currently Playing: { title || file_name }</h2>\n	<button class=\'btn center\' on-click=\'quitMovie\'>Quit Player</button>\n</div>';
+});
+require.register("movie/templates/seekTo.html", function(exports, require, module){
+module.exports = '<form class=\'inline-block inline\'>\n	<input type=\'number\' placeholder=\'Start Time (Minutes)\' class=\'time\'></input><input class=\'submit\' type=\'submit\' value=\'Play\'></input>\n</form>';
 });
 
 require.register("modal/templates/torrent.jade", function(exports, require, module){
@@ -24145,6 +24645,25 @@ require.alias("bmcmahen-backbone/backbone.js", "movie/deps/backbone/backbone.js"
 require.alias("component-underscore/index.js", "bmcmahen-backbone/deps/underscore/index.js");
 
 require.alias("component-jquery/index.js", "bmcmahen-backbone/deps/jquery/index.js");
+
+require.alias("bmcmahen-hold/index.js", "movie/deps/hold/index.js");
+require.alias("bmcmahen-hold/index.js", "movie/deps/hold/index.js");
+require.alias("component-events/index.js", "bmcmahen-hold/deps/events/index.js");
+require.alias("component-event/index.js", "component-events/deps/event/index.js");
+
+require.alias("component-delegate/index.js", "component-events/deps/delegate/index.js");
+require.alias("component-matches-selector/index.js", "component-delegate/deps/matches-selector/index.js");
+require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
+
+require.alias("component-event/index.js", "component-delegate/deps/event/index.js");
+
+require.alias("bmcmahen-hold/index.js", "bmcmahen-hold/index.js");
+require.alias("component-tip/index.js", "movie/deps/tip/index.js");
+require.alias("component-tip/template.js", "movie/deps/tip/template.js");
+require.alias("component-emitter/index.js", "component-tip/deps/emitter/index.js");
+require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
+
+require.alias("component-jquery/index.js", "component-tip/deps/jquery/index.js");
 
 require.alias("movie/index.js", "movie/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
