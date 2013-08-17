@@ -16563,8 +16563,8 @@ Swipe.prototype.unbind = function(){
 
 Swipe.prototype.ontouchstart = function(e){
   var touches = e.changedTouches;
-  if (!touches) return;
-  touches = touches[0];
+  if (touches) touches = touches[0];
+  else touches = e;
 
   this.transitionDuration(0);
   this.dx = 0;
@@ -16590,10 +16590,13 @@ Swipe.prototype.ontouchstart = function(e){
 Swipe.prototype.ontouchmove = function(e){
   if (!this.down || this.updown) return;
   var touches = e.changedTouches;
-  if (!touches) return;
-  // ignore more than one finger
-  if (e.touches.length > 1) return;
-  touches = touches[0];
+  if (touches){
+    // ignore more than one finger
+    if (e.touches.length > 1) return;
+    touches = touches[0];
+  } else {
+    touches = e;
+  }
 
   var down = this.down;
   var x = touches.pageX;
@@ -16634,8 +16637,8 @@ Swipe.prototype.ontouchend = function(e){
   e.stopPropagation();
   if (!this.down) return;
   var touches = e.changedTouches;
-  if (!touches) return;
-  touches = touches[0];
+  if (touches) touches = touches[0];
+  else touches = e;
 
   // setup
   var dx = this.dx;
@@ -23994,7 +23997,7 @@ require.register("movie/templates/meta-search-result.jade", function(exports, re
 module.exports = 'li.list-group-item\n	a=locals.title + \' [\'+locals.release_date+\']\'\n	i.loader.pull-right\n';
 });
 require.register("movie/templates/meta.html", function(exports, require, module){
-module.exports = '<div class=\'span12\'>\n	<div class=\'row\'>\n		<div class=\'span12 center-text\'>\n			<form id=\'meta-search\' class=\'inline-block inline\'>\n				<input type=\'text\' class=\'search-title\' placeholder=\'Movie Title\'><input type=\'submit\' value=\'Find Movie\'>\n			</form>\n		</div>\n	</div>\n	<div class=\'row\'>\n		<div class=\'span10 offset1\'>\n			<i class=\'loader light\'></i>\n			<ul id=\'search-results\' class=\'list-group\'>\n			</ul>\n		</div>\n	</div>';
+module.exports = '<div class=\'span12\'>\n	<div class=\'row\'>\n		<div class=\'span12 center-text\'>\n			<form id=\'meta-search\' class=\'inline-block inline\'>\n				<input type=\'text\' class=\'search-title\' placeholder=\'Movie Title\'><input type=\'submit\' value=\'Find Movie\'>\n			</form>\n		</div>\n	</div>\n	<div class=\'row\'>\n		<div class=\'span8 offset2\'>\n			<i class=\'loader light\'></i>\n			<ul id=\'search-results\' class=\'list-group\'>\n			</ul>\n		</div>\n	</div>';
 });
 require.register("movie/templates/movieinfo.html", function(exports, require, module){
 module.exports = '<div class=\'poster\'>\n	<div id=\'poster-image\'>\n		<img data-src=\'image_url < original_poster_path\'></img>\n	</div>\n</div>\n<div class=\'movie-info\'>\n	<h2> { title || file_name }</h2>\n</div>';

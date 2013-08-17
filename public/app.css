@@ -1269,6 +1269,7 @@ ul.swipe-wrapper {
   height: 100%;
   list-style-type: none;
   padding: 0;
+  cursor: move;
   margin: 0;
   -ms-box-sizing: border-box;
   -moz-box-sizing: border-box;
