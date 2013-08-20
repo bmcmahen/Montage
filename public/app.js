@@ -18798,39 +18798,20 @@ MovieItem.prototype.changePoster = function(){
 };
 
 MovieItem.prototype.selectMovie = function(e){
-  // e.preventDefault();
   e.stopPropagation();
   if (this.model.get('file_missing')) {
     return;
   }
-
   if (this.holding){
     this.holding = false;
     return;
   }
-
-  var self = this;
-
-  var backdrop = this.model.get('original_backdrop_path')
-    ? '/movies/w1280'+ this.model.get('original_backdrop_path')
-    : null;
-
-  Session.set('imageZoom', {
-    origin: {
-      left: this.pos.left,
-      top: this.pos.top,
-      width: BOX_WIDTH
-    },
-    url : backdrop,
-    model: self.model,
-    fn : function(zoom){
-      zoom.on('showing', function(){
-        setTimeout(function(){
-          Session.set('selected_movie', self.model);
-        }, 400);
-      });
-    }
-  });
+  this.model.pos = {
+    left: this.pos.left,
+    top: this.pos.top + 50,
+    width: BOX_WIDTH
+  };
+  Session.set('selected_movie', this.model);
 };
 
 MovieItem.prototype.unbind = function(){
@@ -20151,7 +20132,6 @@ var DrawerController = View.extend({
 	},
 
 	show : function(){
-		console.log('SHOW!');
 		var self = this;
 		this.showing = true;
 		this.$body.addClass('nav-drawer-open');
@@ -22539,157 +22519,493 @@ Tip.prototype.remove = function(){
 require.register("component-tip/template.js", function(exports, require, module){
 module.exports = '<div class="tip tip-hide">\n  <div class="tip-arrow"></div>\n  <div class="tip-inner"></div>\n</div>';
 });
-require.register("movie/index.js", function(exports, require, module){
-var Session = require('../session');
-var ddp = require('../sockets').ddp;
+require.register("bmcmahen-zoom/index.js", function(exports, require, module){
+var Emitter = require('emitter');
+var classes = require('classes');
+var transform = require('transform-property');
 
-var dom = require('dom');
-var events = require('events');
-var bind = require('event');
-var loading = require('loading');
-var EmitterManager = require('emitter-manager');
-var onload = require('onload');
+/**
+ * Background Zoom Constructor
+ * @param  {String} src       url of image, or null for no image
+ * @param  {Element} container element
+ * @return {BackgroundZoom}
+ */
 
-
-
-var Playback = require('./playback');
-
-/////////////////////////
-// Tab View for Movie  //
-/////////////////////////
-
-function TabView(movie, init){
-	this.init = init || 'playView';
-	this.movie = movie;
-	this.$el = dom(require('./templates/container.html'));
-	this.el = this.$el.get();
-	this.$content = this.$el.find('.tab-content');
+var BackgroundZoom = function(el, container){
+  this.el = el;
+  this.container = container;
+  this._duration = 800;
 }
 
-EmitterManager(TabView.prototype);
+module.exports = BackgroundZoom;
 
-module.exports = TabView;
+Emitter(BackgroundZoom.prototype);
 
-TabView.prototype.render = function(){
-	this[this.init]();
-	this.bind();
+
+/**
+ * Zoom our image
+ * @param  {Function} fn
+ * @return {BackgroundZoom}
+ */
+
+BackgroundZoom.prototype.show = function(fn){
+  var self = this;
+  var zoom = function(){
+    // this is silly, but safari seems to need it. safari is very needy.
+    setTimeout(function(){
+      self.setOriginalPosition();
+      self.container.innerHTML = '';
+      self.container.appendChild(self.el);
+    }, 0);
+    setTimeout(function(){
+      self.setTargetPosition();
+      self.emit('showing');
+      classes(self.el).add('in');
+    }, 0);
+    if (fn) fn();
+  };
+
+  zoom();
+  return this;
+};
+
+BackgroundZoom.prototype.hide = function(){
+  this.setOriginalPosition();
+  var self = this;
+  classes(self.el).remove('in').add('out');
+  setTimeout(function(){
+    classes(self.el).remove('out');
+    self.el.parentNode.removeChild(self.el);
+    self.emit('hidden');
+  }, this._duration);
+};
+
+/**
+ * Set our target position for animating.
+ * @return {BackgroundZoom}
+ */
+
+BackgroundZoom.prototype.setTargetPosition = function(){
+  var o = this._target;
+  var s = this.el.style;
+  // for safari. boo.
+  setTimeout(function(){
+    s[transform] = 'translate3d('+ o.x +'px, '+ o.y +'px, 0) scale(1)';
+  }, 0);
+  return this;
+};
+
+/**
+ * Create a scaled down version of the target element in the
+ * location of our origin element.
+ * @return {BackgroundZoom}
+ */
+
+BackgroundZoom.prototype.setOriginalPosition = function(){
+  var o = this._origin;
+  var t = this._target;
+
+  var s = this.el.style;
+  s.width = this._width || t.w + 'px';
+  s.height = this._height || t.h + 'px';
+
+  var scale = o.w / t.w;
+  var translateX = (o.x + (o.w / 2)) - (t.x + (t.w / 2));
+  var translateY = (o.y + (o.h / 2)) - (t.y + (t.h / 2));
+  var translate3d = 'translate3d('+ translateX +'px, '+ translateY +'px, 0)';
+  var scale = ' scale('+ scale +')';
+
+  s[transform] = translate3d + scale;
+  return this;
+}
+
+/**
+ * Set animation duration in ms
+ * @param  {Number} duration ms
+ * @return {BackgroundZoom}
+ */
+
+BackgroundZoom.prototype.duration = function(duration){
+  this._duration = duration;
+  return this;
+}
+
+/**
+ * Set origin position
+ * @param  {Number} x
+ * @param  {Number} y
+ * @param  {Number} w
+ * @param  {Number} h
+ * @return {BackgroundZoom}
+ */
+
+BackgroundZoom.prototype.origin = function(x, y, w, h){
+  this._origin = { x: x, y: y, w: w, h: h };
+  return this;
+}
+
+/**
+ * Set end dimensions. Will default to target width and height
+ * but you may want to use percentages instead.
+ * @param  {String} w width e.g. 100%
+ * @param  {String} h height
+ * @return {BackgroundZoom}
+ */
+
+BackgroundZoom.prototype.setDimensions = function(w, h){
+  this._width = w;
+  this._height = h;
+  return this;
+};
+
+/**
+ * Set target position
+ * @param  {Number} x
+ * @param  {Number} y
+ * @param  {Number} w
+ * @param  {Number} h
+ * @return {BackgroundZoom}
+ * Note -- You will get strange results if you don't use the same
+ * ratio for origin and target positions, simply because we rely
+ * exclusively on scale to emulate our smaller image.
+ */
+
+BackgroundZoom.prototype.target = function(x, y, w, h){
+  this._target = { x: x, y: y, w: w, h: h};
+  return this;
+}
+});
+require.register("bmcmahen-tabs/index.js", function(exports, require, module){
+var Emitter = require('emitter');
+var events = require('event');
+var classes = require('classes');
+var bind = require('bind');
+var each = require('each');
+
+
+/**
+ * Tabs Constructor
+ */
+
+function Tabs(){
+	this.el = document.createElement('ul');
+	this.content = document.createElement('div');
+	classes(this.content).add('tab-content');
+	classes(this.el).add('tabs');
+	this.tabs = [];
+	this.tabContent = [];
+}
+
+module.exports = Tabs;
+
+Emitter(Tabs.prototype);
+
+/**
+ * Add a tab
+ * @param  {String} name
+ * @param  {Element} el   main content dom element
+ * @return {Tabs}
+ */
+
+Tabs.prototype.add = function(name, el){
+	var tab = new Tab(name, this.tabs.length);
+	this.tabContent.push(el);
+	this.tabs.push(tab);
+	tab.on('selected', bind(this, this.show));
+	this.el.appendChild(tab.el);
+	this.content.appendChild(el);
 	return this;
 };
 
-// use once, use retry... maybe make a component for this.
-TabView.prototype.renderImage = function(){
+/**
+ * Show an element
+ * @param  {Number} i index of tab to show
+ * @return {Tabs}
+ */
 
+Tabs.prototype.show = function(i, silent){
+
+	if (this.active) {
+		classes(this.active).remove('show');
+		this.activeTab.out();
+	}
+
+	this.active = this.tabContent[i];
+	this.activeTab = this.tabs[i];
+
+	classes(this.active).add('show');
+	if (!silent) this.activeTab.in();
+
+	this.emit('showing', i, this.active, this.activeTab);
+	return this;
 };
+
+Tabs.prototype.unbind = function(){
+	each(this.tabs, function(tab){
+		tab.unbind();
+		tab.off('selected');
+	});
+};
+
+
+/**
+ * Tab Constructor
+ * @param {String} name of tab
+ * @param {Number} i    index of tab
+ */
+
+function Tab(name, i){
+	this.name = name;
+	this.i = i;
+	this.el = document.createElement('li');
+	var a = this.a = document.createElement('a');
+	a.href='#';
+	a.textContent = name;
+	this.el.appendChild(a);
+	var self = this;
+	this.onclick = function(e){
+		e.preventDefault();
+		e.stopPropagation();
+		self.in();
+		self.emit('selected', i);
+	}
+	events.bind(this.el, 'click', this.onclick);
+}
+
+Emitter(Tab.prototype);
+
+Tab.prototype.in = function(){
+	classes(this.a).add('active');
+}
+
+Tab.prototype.out = function(){
+	classes(this.a).remove('active');
+};
+
+Tab.prototype.unbind = function(){
+	events.unbind(this.el, 'click', this.onclick);
+};
+
+
+
+});
+require.register("movie/index.js", function(exports, require, module){
+var dom = require('dom');
+var bind = require('event');
+var onload = require('onload');
+var Zoom = require('zoom');
+var Model = require('backbone').Model;
+
+var TabView = require('./tabs');
+var Session = require('../session');
+var collection = require('../collections/movies');
+
+
+
+/////////////////
+// Controller  //
+/////////////////
+
+var movieView, previousMovie, zoom;
+var $container = dom('#movie-view');
+var top = 45;
+var left = 0;
+
+var updateStore = function(model){
+  Session.set('selected_movie', Session.get('selected_movie'), {
+    silent: true
+  });
+}
+
+function showMovie(val, options){
+
+  if (previousMovie) {
+    previousMovie.off('change', updateStore);
+    delete previousMovie.pos;
+    zoom.hide();
+    movieView = null;
+    previousMovie = null;
+  }
+
+  if (val){
+    if (!(val instanceof Model)) {
+      collection.add(val);
+      val = collection.get(val._id);
+    }
+
+    val.on('change', updateStore);
+    previousMovie = val;
+    movieView = new TabView(val);
+
+    console.log(movieView);
+
+    var height = window.innerHeight - 45;
+    var width = window.innerWidth;
+
+    if (!val.pos) {
+      val.pos = {
+        width: 100,
+        left: (width / 2) - (100 / 2),
+        top: (height / 2) - (75 / 2)
+      };
+    }
+
+    var originHeight = val.pos.width * (height / width);
+
+    zoom = new Zoom(movieView.$el.get(), $container.get())
+      .duration(400)
+      .setDimensions('100%', '100%')
+      .target(left, top, width, height)
+      .origin(val.pos.left, val.pos.top + 70, val.pos.width, originHeight);
+
+
+    options = options || {};
+    if (options.no_zoom) {
+      movieView.$el.addClass('no-zoom');
+    }
+
+    // preload our background image.
+    var src = val.get('original_backdrop_path');
+    if (src) {
+      var path = '/movies/w1280' + src;
+      var img = new Image;
+      img.onload = function() {
+        movieView.$el.get().style['background-image'] = 'url("'+ path +'")';
+        zoom.show();
+      };
+      img.onerror = function(){
+        zoom.show();
+      };
+      img.src = path;
+    // or don't bother using a background image.
+    } else {
+      zoom.show();
+    }
+  }
+}
+
+Session.on('change:selected_movie', showMovie);
+var holdover = Session.get('selected_movie');
+if (holdover) showMovie(holdover, { no_zoom: true });
+
+
+});
+require.register("movie/tabs.js", function(exports, require, module){
+var Tabs = require('tabs');
+var Session = require('../session');
+var dom = require('dom');
+var events = require('events');
+var onload = require('onload');
+
+var Playback = require('./playback');
+var EditMeta = require('./meta');
+
+/**
+ * Movie-View Tab Controller
+ * @param {Model} movie
+ * @param {Number} init  with tab index
+ */
+
+function TabView(movie, init){
+	this.$el = dom(require('./templates/container.html'));
+	this.movie = movie;
+
+	var playback = new Playback(movie);
+	var meta = new EditMeta(movie);
+
+	this.tabs = new Tabs()
+		.add('Playback', playback.$el.get())
+		.add('Edit Metadata', meta.$el.get())
+		.show(init || 0);
+
+	this.$el
+		.find('.tab-wrapper')
+		.append(this.tabs.el);
+
+	this.$el
+		.find('.tab-content')
+		.append(this.tabs.content);
+
+	this.$el.find('img').forEach(function(img){
+		onload(img);
+	});
+
+	this.bind();
+}
+
+module.exports = TabView;
 
 TabView.prototype.bind = function(){
 	this.events = events(this.$el.get(), this);
-	this.events.bind('click #tab-one', 'playView');
-	this.events.bind('click #tab-two', 'metaView');
-	this.events.bind('click #tab-three', 'subtitleView');
 	this.events.bind('click .icon-close', 'onclose');
-	this.listenTo(this.movie, 'change:original_backdrop_path', this.renderImage);
-};
-
-TabView.prototype.close = function(e){
-	this.events.unbind();
-	this.stopListening();
-	this.$el.remove();
 };
 
 TabView.prototype.onclose = function(e){
 	e.preventDefault();
 	Session.set('selected_movie', null);
-	Session.set('imageZoom', null);
-	this.close();
 };
-
-TabView.prototype.setActive = function(target){
-	if (this.$active) this.$active.removeClass('active');
-	target.addClass('active');
-	this.$active = target;
-}
-
-TabView.prototype.playView = function(e){
-	if (e) e.preventDefault();
-	this.setActive(this.$el.find('#tab-one'));
-	this.$content
-		.empty()
-		.append(new Playback(this.movie).$el);
-		console.log('play view render');
-
-	this.$content.find('img').forEach(function(img){
-		onload(img);
-	});
-};
-
-TabView.prototype.metaView = function(e){
-	e.preventDefault();
-	this.setActive(this.$el.find('#tab-two'));
-	this.$content
-		.empty()
-		.append(new EditMeta(this.movie).$el);
-};
-
-TabView.prototype.subtitleView = function(e){
-	e.preventDefault();
-	this.setActive(this.$el.find('#tab-three'));
-	this.$content
-		.empty()
-		.append('subtitle view');
-};
-
+});
+require.register("movie/meta.js", function(exports, require, module){
+var ddp = require('../sockets').ddp;
+var dom = require('dom');
+var events = require('events');
+var bind = require('event');
+var loading = require('loading');
 
 //////////////////////
 // Edit Movie Meta  //
 //////////////////////
 
 function EditMeta(movie){
-	this.model = movie;
-	this.$el = dom(require('./templates/meta.html'));
-	this.bind();
+  this.model = movie;
+  this.$el = dom(require('./templates/meta.html'));
+  this.$el.addClass('tab-item');
+  this.bind();
 }
 
+module.exports = EditMeta;
+
 EditMeta.prototype.bind = function(){
-	this.events = events(this.$el.get(), this);
-	this.events.bind('submit form', 'searchMovie');
+  this.events = events(this.$el.get(), this);
+  this.events.bind('submit form', 'searchMovie');
 }
 
 EditMeta.prototype.close = function(){
-	this.events.unbind();
-	this.$el.remove();
+  this.events.unbind();
+  this.$el.remove();
 }
 
 EditMeta.prototype.renderResults = function(res){
-	var results = res && res.results;
-	var fragment = document.createDocumentFragment();
-	this.results = results.map(function(movie){
-		var view = SearchResult(this.model, movie);
-		fragment.appendChild(view.$el.get());
-		return view;
-	}, this);
-	this.$el
-		.find('#search-results')
-		.empty()
-		.append(fragment);
+  var results = res && res.results;
+  var fragment = document.createDocumentFragment();
+  this.results = results.map(function(movie){
+    var view = SearchResult(this.model, movie);
+    fragment.appendChild(view.$el.get());
+    return view;
+  }, this);
+  this.$el
+    .find('#search-results')
+    .empty()
+    .append(fragment);
 };
 
 EditMeta.prototype.searchMovie = function(e){
-	e.preventDefault();
-	if (this.results) {
-		this.results.forEach(function(res){
-			res.close();
-		}, this);
-	}
-	var name = this.$el.find('input').val();
-	var self = this;
-	var loader = loading(this.$el.get());
-	ddp.ready(function(){
-		ddp.call('queryMeta', name, function(err, res){
-			loader.finish();
-			if (err) return console.log(err);
-			self.renderResults(res);
-		});
-	});
+  e.preventDefault();
+  if (this.results) {
+    this.results.forEach(function(res){
+      res.close();
+    }, this);
+  }
+  var name = this.$el.find('input').val();
+  var self = this;
+  var loader = loading(this.$el.get());
+  ddp.ready(function(){
+    ddp.call('queryMeta', name, function(err, res){
+      loader.finish();
+      if (err) return console.log(err);
+      self.renderResults(res);
+    });
+  });
 };
 
 
@@ -22699,17 +23015,17 @@ EditMeta.prototype.searchMovie = function(e){
 
 function SearchResult(model, json){
 
-	var $el = dom(require('./templates/meta-search-result')(json));
+  var $el = dom(require('./templates/meta-search-result')(json));
 
   var selectThis = function(){
-  	var loader = loading($el.get());
-  	var m = model.toJSON();
-  	$el.addClass('active');
-  	delete m.isSelected;
-  	ddp.apply('updateMeta', [m, json.id], function(err, res){
-  		if (err) return loader.failure();
-  		return loader.success();
-  	});
+    var loader = loading($el.get());
+    var m = model.toJSON();
+    $el.addClass('active');
+    delete m.isSelected;
+    ddp.apply('updateMeta', [m, json.id], function(err, res){
+      if (err) return loader.failure();
+      return loader.success();
+    });
   };
 
   bind.bind($el.get(), 'click', selectThis);
@@ -22717,56 +23033,11 @@ function SearchResult(model, json){
   return {
     $el: $el,
     close: function(){
-    	$el.remove();
+      $el.remove();
       bind.unbind($el.get(), 'click', selectThis);
     }
   }
 }
-
-/////////////////
-// Controller  //
-/////////////////
-
-
-
-(function(){
-  var Model = require('backbone').Model;
-  var $footer = dom('#footer');
-  var movieView, previousMovie;
-  var collection = require('../collections/movies');
-
-  var updateStore = function(model){
-    Session.set('selected_movie', Session.get('selected_movie'), {
-      silent: true
-    });
-  }
-
-  function showMovie(val){
-    if (!val) $footer.addClass('hidden');
-    if (previousMovie) {
-      previousMovie.off('change', updateStore);
-      if (movieView) movieView.close();
-    }
-    if (val){
-      if (!(val instanceof Model)) {
-        collection.add(val);
-        val = collection.get(val._id);
-      }
-      val.on('change', updateStore);
-      previousMovie = val;
-      movieView = new TabView(val).render();
-      $footer
-      	.removeClass('hidden')
-      	.append(movieView.$el);
-    }
-  }
-
-  Session.on('change:selected_movie', showMovie);
-  var holdover = Session.get('selected_movie');
-  if (holdover) showMovie(holdover);
-
-})();
-
 });
 require.register("movie/playback.js", function(exports, require, module){
 var dom = require('dom');
@@ -22899,6 +23170,7 @@ function Playback(movie){
 
   // Our playback wrapper/template
   this.$el = dom(require('./templates/playback.html'));
+  this.$el.addClass('tab-item');
   this.reactive = reactive(this.$el.get(), this.model, this);
 
   // Our meta1 template
@@ -23180,7 +23452,6 @@ Playback.prototype.toggleLocalPlayback = function(time){
 };
 
 Playback.prototype.onload = function(e, time){
-  console.log('onload!', time, this.video);
   this.metadataloaded = true;
   if (time && this.video) this.video.currentTime = time * 60;
 }
@@ -23202,7 +23473,6 @@ Playback.prototype.image_url = function(){
 };
 
 Playback.prototype.quitMovie = function(e){
-  console.log('quit movie!');
   ddp.call('stopVideo');
   this.model.set('isPlaying', false);
   this.model.set('TVplaybackStarted', false);
@@ -23413,14 +23683,12 @@ var currentMovie;
 movies.on('currentlyPlaying', function(model, value){
   if (currentMovie != model) {
     currentVideoView.render(model).show();
-    console.log('SHOW VIDEO');
   }
 });
 
 movies.on('notCurrentlyPlaying', function(){
   currentMovie = null;
   currentVideoView.hide();
-  console.log('HIDE VIDEO');
 });
 
 
@@ -23475,23 +23743,17 @@ CurrentlyPlayingView.prototype.showVideo = function(){
   var backdrop = this.movie.get('original_backdrop_path')
     ? '/movies/w1280'+ this.movie.get('original_backdrop_path')
     : null;
-  Session.set('selected_movie', null);
-  var left = window.innerWidth - 150;
-  Session.set('imageZoom', {
-    origin: {
-      left: window.innerWidth - 150,
-      top: -120,
-      width: 150
-  },
-  url : backdrop,
-  fn : function(zoom){
-    zoom.on('showing', function(){
-      setTimeout(function(){
-        Session.set('selected_movie', self.movie);
-      }, 400);
-      });
-    }
-  });
+
+  if (Session.get('selected_movie') == this.movie)
+    return;
+
+  this.movie.pos = {
+    left: window.innerWidth - 150,
+    top: -120,
+    width: 150
+  };
+
+  Session.set('selected_movie', this.movie);
 };
 
 module.exports = CurrentlyPlayingView;
@@ -23564,64 +23826,6 @@ var Session = require('session-variables');
 var currentSession = new Session().setDefault('primary_display', 'movies');
 
 module.exports = currentSession;
-});
-require.register("image_zoom/index.js", function(exports, require, module){
-var BackgroundZoom = require('background-zoom');
-var dom = require('dom');
-var $container = dom('#background-image');
-var Session = require('session');
-var currentZoom;
-
-Session.on('change:imageZoom', zoom);
-var holdover = Session.get('imageZoom');
-if (holdover) zoom(holdover, { noanimate: true });
-
-$container.on('click', function(e){
-	currentZoom && zoom();
-});
-
-function zoom(val, options){
-	if (currentZoom) currentZoom.hide();
-	if (val) {
-		currentZoom = constructZoom(val.origin, val.url, val.fn, options);
-		if (val.model && val.model.on){
-			val.model.on('change:original_backdrop_path', function(model, img){
-				if (img) {
-					$container
-						.find('.zoom-background')
-						.css('background-image', 'url("/movies/w1280'+img+'")');
-				}
-			});
-		}
-		return;
-	}
-}
-
-function constructZoom(origin, url, fn, options){
-	var top = 45;
-	var left = 0;
-	var height = window.innerHeight - 45;
-	var width = window.innerWidth;
-	var originHeight = origin.width * (height / width);
-	options = options || {};
-
-	var zoom = new BackgroundZoom(url, $container.get())
-		.duration(300)
-		.setDimensions('100%', '100%')
-		.className('zoom-background')
-		.target(left, top, width, height)
-		.origin(origin.left, origin.top + 70, origin.width, originHeight);
-
-	if (options.noanimate) {
-		zoom.className('no-zoom');
-	}
-
-	zoom.show();
-
-	if (fn) fn(zoom);
-
-	return zoom;
-}
 });
 require.register("boot/index.js", function(exports, require, module){
 var collections = require('collections');
@@ -23703,18 +23907,9 @@ var Session = require('session');
 
 })();
 
-
-///////////////////////////////////
-// Handle Selected Movie Display //
-///////////////////////////////////
-
-// xxx rethink this. pretty bad...
-
-
-
 require('current_playback');
 require('movie');
-require('image_zoom');
+
 });
 require.register("rasputin/jade-runtime.js", function(exports, require, module){
 
@@ -23987,11 +24182,13 @@ require.register("bmcmahen-slider/template.html", function(exports, require, mod
 module.exports = '<div class=\'slider\'>\n	<a href=\'#\' class=\'slider-min-value\'>0</a>\n	<div class=\'slider-range\'>\n		<input type=\'range\'/>\n	</div>\n	<a href=\'#\' class=\'slider-max-value\'>10</a>\n</div>';
 });
 
+
+
 require.register("movie/templates/playback.html", function(exports, require, module){
 module.exports = '<div>\n	<div id=\'toggle\' class=\'segment\'>\n		<div class=\'toggle\'>\n			<label class=\'toggle-on-label\'>TV</label>\n			<input class=\'toggle-checkbox\' type=\'checkbox\'>\n			<div class=\'toggle-button\'></div>\n			<label class=\'toggle-off-label\'>iOS</label>\n		</div>\n	</div>\n\n	<div id=\'main-playback\' class=\'segment clearfix white clearfix\'>\n		<div id=\'movie-local-playback\' data-show=\'isLocal\'>\n			<div class=\'video-wrapper\' data-show=\'localPlaybackStarted\'></div>\n			<div class=\'movie-meta-1\' data-hide="localPlaybackStarted"></div>\n		</div>\n		<div id=\'movie-tv-playback\' data-show=\'isTV\'>\n			<div class=\'tv-control\' data-show=\'TVplaybackStarted\'></div>\n			<div class=\'movie-meta-2\' data-hide=\'TVplaybackStarted\'></div>\n		</div>\n	</div>\n\n	<div class=\'segment white clearfix\' on-click=\'oncontrolclick\'>\n		<div class=\'controls pre\'>\n			<button class=\'btn transparent\' data-hide=\'isTV\' disable-if-not=\'isPlaying\' on-click=\'toggleFullscreen\'> Fullscreen </button>\n			<button class=\'btn transparent\' data-hide=\'isLocal\' disable-if-not=\'isPlaying\' on-click=\'toggleSubtitles\'> Subtitles </button>\n\n		</div>\n		<div class=\'controls\'>\n			<a class=\'control back\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'rewind\'>\n				<i class=\'icon-backward-2\'></i>\n			</a>\n			<a class=\'control play\' href=\'#\' on-click=\'play\'>\n				<i class=\'icon-play-2\' data-hide=\'isPlaying\'></i>\n				<i class=\'icon-pause-2\' data-show=\'isPlaying\'></i>\n			</a>\n			<a class=\'control forward\' href=\'#\' disable-if-not=\'isPlaying\' on-click=\'forward\'>\n				<i class=\'icon-forward-2\'></i>\n			</a>\n		</div>\n		<div class=\'controls post\' disable-if-not=\'isPlaying\'>\n			<button class=\'btn transparent\' on-click=\'volumeDown\'>\n				<i class=\'icon-minus\'></i>\n			</button>\n			<button class=\'btn transparent\' on-click=\'volumeUp\'>\n				<i class=\'icon-plus\'></i>\n			</button>\n		</div>\n	</div>\n\n</div>\n\n\n';
 });
 require.register("movie/templates/container.html", function(exports, require, module){
-module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text\'>\n				<ul class=\'tabs\'>\n					<li><a href=\'#\' id=\'tab-one\'> Playback </a></li>\n					<li><a href=\'#\' id=\'tab-two\'> Edit Metadata </a></li>\n					<li><a href=\'#\' id=\'tab-three\'> Subtitles </a></li>\n				</ul>\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n\n		</div>\n	</div>\n<a href=\'#\' class=\'more\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
+module.exports = '<div class=\'movie-detail\'>\n	<div class=\'container-fluid full\'>\n		<div class=\'row-fluid\'>\n			<div class=\'span12 center-text tab-wrapper\'>\n\n			</div>\n		</div>\n		<div class=\'row-fluid tab-content\'>\n\n		</div>\n	</div>\n<a href=\'#\' class=\'close-zoom\'>\n	<i class=\'icon-close\'></i>\n</a>\n</div>\n';
 });
 require.register("movie/templates/meta-search-result.jade", function(exports, require, module){
 module.exports = 'li.list-group-item\n	a=locals.title + \' [\'+locals.release_date+\']\'\n	i.loader.pull-right\n';
@@ -24015,7 +24212,6 @@ module.exports = '.md-content\n	h3 Download Torrent\n	div.md-body\n		dl.dl-horiz
 require.register("modal/templates/network.jade", function(exports, require, module){
 module.exports = '.md-content\n	h3 Add Network Source\n	div.md-body\n		form\n			label Server Address and Path\n				input.network-path(type=\'text\')\n\n\n	div.md-footer.clearfix\n		button.md-close.btn.dismiss Cancel\n		button.add-source.btn.primary Add Network Source\n';
 });
-
 
 
 require.alias("component-events/index.js", "rasputin/deps/events/index.js");
@@ -24502,6 +24698,8 @@ require.alias("bmcmahen-session-variables/index.js", "bmcmahen-session-variables
 require.alias("session/index.js", "session/index.js");
 require.alias("drawer/index.js", "drawer/index.js");
 require.alias("movie/index.js", "boot/deps/movie/index.js");
+require.alias("movie/tabs.js", "boot/deps/movie/tabs.js");
+require.alias("movie/meta.js", "boot/deps/movie/meta.js");
 require.alias("movie/playback.js", "boot/deps/movie/playback.js");
 require.alias("movie/index.js", "boot/deps/movie/index.js");
 require.alias("component-onload/index.js", "movie/deps/onload/index.js");
@@ -24674,6 +24872,35 @@ require.alias("component-indexof/index.js", "component-emitter/deps/indexof/inde
 
 require.alias("component-jquery/index.js", "component-tip/deps/jquery/index.js");
 
+require.alias("bmcmahen-zoom/index.js", "movie/deps/zoom/index.js");
+require.alias("bmcmahen-zoom/index.js", "movie/deps/zoom/index.js");
+require.alias("component-emitter/index.js", "bmcmahen-zoom/deps/emitter/index.js");
+require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
+
+require.alias("component-classes/index.js", "bmcmahen-zoom/deps/classes/index.js");
+require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
+
+require.alias("component-transform-property/index.js", "bmcmahen-zoom/deps/transform-property/index.js");
+
+require.alias("bmcmahen-zoom/index.js", "bmcmahen-zoom/index.js");
+require.alias("bmcmahen-tabs/index.js", "movie/deps/tabs/index.js");
+require.alias("bmcmahen-tabs/index.js", "movie/deps/tabs/index.js");
+require.alias("component-emitter/index.js", "bmcmahen-tabs/deps/emitter/index.js");
+require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
+
+require.alias("component-event/index.js", "bmcmahen-tabs/deps/event/index.js");
+
+require.alias("component-classes/index.js", "bmcmahen-tabs/deps/classes/index.js");
+require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
+
+require.alias("component-bind/index.js", "bmcmahen-tabs/deps/bind/index.js");
+
+require.alias("component-each/index.js", "bmcmahen-tabs/deps/each/index.js");
+require.alias("component-to-function/index.js", "component-each/deps/to-function/index.js");
+
+require.alias("component-type/index.js", "component-each/deps/type/index.js");
+
+require.alias("bmcmahen-tabs/index.js", "bmcmahen-tabs/index.js");
 require.alias("movie/index.js", "movie/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
 require.alias("loading/index.js", "boot/deps/loading/index.js");
@@ -24884,102 +25111,5 @@ require.alias("yields-unserialize/index.js", "yields-store/deps/unserialize/inde
 
 require.alias("bmcmahen-session-variables/index.js", "bmcmahen-session-variables/index.js");
 require.alias("session/index.js", "session/index.js");
-require.alias("image_zoom/index.js", "boot/deps/image_zoom/index.js");
-require.alias("image_zoom/index.js", "boot/deps/image_zoom/index.js");
-require.alias("bmcmahen-background-zoom/index.js", "image_zoom/deps/background-zoom/index.js");
-require.alias("bmcmahen-background-zoom/index.js", "image_zoom/deps/background-zoom/index.js");
-require.alias("component-emitter/index.js", "bmcmahen-background-zoom/deps/emitter/index.js");
-require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
-
-require.alias("component-classes/index.js", "bmcmahen-background-zoom/deps/classes/index.js");
-require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
-
-require.alias("component-transform-property/index.js", "bmcmahen-background-zoom/deps/transform-property/index.js");
-
-require.alias("bmcmahen-background-zoom/index.js", "bmcmahen-background-zoom/index.js");
-require.alias("component-classes/index.js", "image_zoom/deps/classes/index.js");
-require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
-
-require.alias("component-dom/index.js", "image_zoom/deps/dom/index.js");
-require.alias("component-type/index.js", "component-dom/deps/type/index.js");
-
-require.alias("component-event/index.js", "component-dom/deps/event/index.js");
-
-require.alias("component-delegate/index.js", "component-dom/deps/delegate/index.js");
-require.alias("component-matches-selector/index.js", "component-delegate/deps/matches-selector/index.js");
-require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
-
-require.alias("component-event/index.js", "component-delegate/deps/event/index.js");
-
-require.alias("component-indexof/index.js", "component-dom/deps/indexof/index.js");
-
-require.alias("component-domify/index.js", "component-dom/deps/domify/index.js");
-
-require.alias("component-classes/index.js", "component-dom/deps/classes/index.js");
-require.alias("component-indexof/index.js", "component-classes/deps/indexof/index.js");
-
-require.alias("component-css/index.js", "component-dom/deps/css/index.js");
-
-require.alias("component-sort/index.js", "component-dom/deps/sort/index.js");
-
-require.alias("component-value/index.js", "component-dom/deps/value/index.js");
-require.alias("component-value/index.js", "component-dom/deps/value/index.js");
-require.alias("component-type/index.js", "component-value/deps/type/index.js");
-
-require.alias("component-value/index.js", "component-value/index.js");
-require.alias("component-query/index.js", "component-dom/deps/query/index.js");
-
-require.alias("component-matches-selector/index.js", "component-dom/deps/matches-selector/index.js");
-require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
-
-require.alias("yields-traverse/index.js", "component-dom/deps/traverse/index.js");
-require.alias("yields-traverse/index.js", "component-dom/deps/traverse/index.js");
-require.alias("component-matches-selector/index.js", "yields-traverse/deps/matches-selector/index.js");
-require.alias("component-query/index.js", "component-matches-selector/deps/query/index.js");
-
-require.alias("yields-traverse/index.js", "yields-traverse/index.js");
-require.alias("session/index.js", "image_zoom/deps/session/index.js");
-require.alias("session/index.js", "image_zoom/deps/session/index.js");
-require.alias("yields-store/index.js", "session/deps/store/index.js");
-require.alias("component-each/index.js", "yields-store/deps/each/index.js");
-require.alias("component-to-function/index.js", "component-each/deps/to-function/index.js");
-
-require.alias("component-type/index.js", "component-each/deps/type/index.js");
-
-require.alias("component-type/index.js", "yields-store/deps/type/index.js");
-
-require.alias("yields-unserialize/index.js", "yields-store/deps/unserialize/index.js");
-
-require.alias("component-each/index.js", "session/deps/each/index.js");
-require.alias("component-to-function/index.js", "component-each/deps/to-function/index.js");
-
-require.alias("component-type/index.js", "component-each/deps/type/index.js");
-
-require.alias("component-emitter/index.js", "session/deps/emitter/index.js");
-require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
-
-require.alias("bmcmahen-session-variables/index.js", "session/deps/session-variables/index.js");
-require.alias("bmcmahen-session-variables/index.js", "session/deps/session-variables/index.js");
-require.alias("component-emitter/index.js", "bmcmahen-session-variables/deps/emitter/index.js");
-require.alias("component-indexof/index.js", "component-emitter/deps/indexof/index.js");
-
-require.alias("component-each/index.js", "bmcmahen-session-variables/deps/each/index.js");
-require.alias("component-to-function/index.js", "component-each/deps/to-function/index.js");
-
-require.alias("component-type/index.js", "component-each/deps/type/index.js");
-
-require.alias("yields-store/index.js", "bmcmahen-session-variables/deps/store/index.js");
-require.alias("component-each/index.js", "yields-store/deps/each/index.js");
-require.alias("component-to-function/index.js", "component-each/deps/to-function/index.js");
-
-require.alias("component-type/index.js", "component-each/deps/type/index.js");
-
-require.alias("component-type/index.js", "yields-store/deps/type/index.js");
-
-require.alias("yields-unserialize/index.js", "yields-store/deps/unserialize/index.js");
-
-require.alias("bmcmahen-session-variables/index.js", "bmcmahen-session-variables/index.js");
-require.alias("session/index.js", "session/index.js");
-require.alias("image_zoom/index.js", "image_zoom/index.js");
 require.alias("boot/index.js", "boot/index.js");
 require("rasputin/jade-runtime");

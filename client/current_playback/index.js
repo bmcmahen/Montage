@@ -15,14 +15,12 @@ var currentMovie;
 movies.on('currentlyPlaying', function(model, value){
   if (currentMovie != model) {
     currentVideoView.render(model).show();
-    console.log('SHOW VIDEO');
   }
 });
 
 movies.on('notCurrentlyPlaying', function(){
   currentMovie = null;
   currentVideoView.hide();
-  console.log('HIDE VIDEO');
 });
 
 
@@ -77,23 +75,17 @@ CurrentlyPlayingView.prototype.showVideo = function(){
   var backdrop = this.movie.get('original_backdrop_path')
     ? '/movies/w1280'+ this.movie.get('original_backdrop_path')
     : null;
-  Session.set('selected_movie', null);
-  var left = window.innerWidth - 150;
-  Session.set('imageZoom', {
-    origin: {
-      left: window.innerWidth - 150,
-      top: -120,
-      width: 150
-  },
-  url : backdrop,
-  fn : function(zoom){
-    zoom.on('showing', function(){
-      setTimeout(function(){
-        Session.set('selected_movie', self.movie);
-      }, 400);
-      });
-    }
-  });
+
+  if (Session.get('selected_movie') == this.movie)
+    return;
+
+  this.movie.pos = {
+    left: window.innerWidth - 150,
+    top: -120,
+    width: 150
+  };
+
+  Session.set('selected_movie', this.movie);
 };
 
 module.exports = CurrentlyPlayingView;

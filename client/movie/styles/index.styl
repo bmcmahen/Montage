@@ -1,0 +1,304 @@
+
+.player {
+  text-align: center;
+}
+
+
+.player.right {
+  text-align: right;
+}
+
+.controls a,
+a.control {
+  text-decoration: none;
+  color: #79A6CC;
+  display: inline-block;
+  margin: 7px;
+  vertical-align: middle;
+  transition: opacity 0.3s ease-out;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.44);
+}
+
+a.control i:active {
+  color: #333;
+}
+
+a.control.active i {
+  line-height: 50px;
+  font-size: 50px;
+}
+
+a.control:active {
+  background: #bbb;
+}
+
+a.control.play .icon-pause-2.show {
+  margin-left: -3px;
+  margin-right: 3px;
+  padding-left: 0px;
+}
+
+a.control.disabled {
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+a.control.play {
+  text-align: center;
+  margin-right: 8px;
+  margin-left: 8px;
+  border-radius: 50%;
+  padding: 6px 2px 6px 10px;
+  box-sizing: border-box;
+}
+
+a.control.play i {
+  font-size: 40px;
+}
+
+a.control.forward {
+  border-radius: 50%;
+  font-size: 40px;
+  padding: 6px 5px 6px 10px;
+}
+
+a.control.back {
+  border-radius: 50%;
+  font-size: 25px;
+  padding: 6px 10px 6px 5px;
+}
+
+a.control.forward i,
+a.control.back i {
+  font-size: 25px;
+}
+
+.controls a:active, {
+  background: rgb(228, 228, 228);
+  box-shadow: 0 0 30px rgba(255,255,255,0.9);
+}
+
+.controls.pre,
+.controls.post {
+  width: 25%;
+  padding: 18px 0 0 0;
+}
+
+.controls.post {
+  text-align: right;
+}
+
+.controls.pre {
+  text-align: left;
+}
+
+
+.controls {
+  text-align: center;
+  float: left;
+  width: 50%;
+  box-sizing: border-box;
+}
+
+.controls button {
+  display: inline-block;
+}
+
+.controls button.hide {
+  display: none;
+}
+
+.source {
+  width: 50px;
+}
+
+.info {
+  width: 60%;
+}
+
+.expand {
+  width: 170px;
+  text-align: right;
+}
+
+.expand select {
+  margin: 10px;
+}
+
+#poster-image img {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+.detail-view {
+  position: relative;
+  height: 100%;
+}
+
+.movie-info {
+  box-sizing: border-box;
+  text-shadow: 0 1px 0 rgba(252, 252, 252, 0.48);
+  color: rgba(255,255,255,1);
+  margin: 0 auto;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.movie-detail .segment {
+  position: relative;
+  padding: 5px;
+  transition: all 0.4s ease-out;
+}
+
+.movie-detail .segment.white {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+#movie-view .poster {
+  width: 30%;
+  box-sizing: border-box;
+  padding: 10px;
+  margin: 0 auto;
+  margin-top: 10px;
+  min-height: 240px;
+}
+
+#movie-view .poster img {
+  border: 1px solid #bbb;
+}
+
+#movie-view .tab-content {
+  display: block;
+  border-radius: 2px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.movie-info p {
+  font-size: 15px;
+  line-height: 24px;
+  color: #453649;
+}
+
+a.close-zoom {
+  text-shadow: 0 1px 1px white;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 200;
+  font-size: 25px;
+  color: rgba(55, 53, 58, 0.75);
+  padding: 10px 12px 10px 12px;
+}
+
+a.close-zoom i {
+  display: block;
+  color: white;
+  text-shadow: 0px 0px 2px rgba(0,0,0,0.5);
+}
+
+a.close-zoom:hover {
+  text-decoration: none;
+}
+
+a.close-zoom:active {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+a.close-zoom:active i {
+  color: #333;
+  text-shadow: none;
+}
+
+#main-playback {
+  margin-top: 10px;
+  background: black;
+  min-height: 280px;
+}
+
+#main-playback.video {
+  background: black;
+  padding: 0;
+}
+
+.movie-detail {
+  height: 100%;
+}
+
+#search-results {
+  max-height: 400px;
+  overflow: auto;
+  margin-top: 10px;
+}
+
+.movie-info p.meta {
+  font-size: 13px;
+  line-height: 20px;
+  margin: 0;
+  color: #999;
+}
+
+.movie-info p.meta.release-date {
+  border-left: none;
+  padding-left: 0;
+}
+
+.movie-info p {
+  margin: 5px 0;
+}
+
+.container-fluid.full {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 200;
+  height: 100%;
+  padding-left: 0;
+}
+
+video {
+  width: 100%;
+  height: 280px;
+}
+
+.controls i {
+  font-size: 16px;
+}
+
+.movie-info .btn.center {
+  margin: 0 auto;
+}
+
+.tv-control {
+  padding-top: 40px;
+}
+
+button.btn:active {
+  background: #bbb;
+  color: white;
+}
+
+.tab-content .tab-item {
+  display: none;
+}
+
+.tab-content .tab-item.show {
+  display: block;
+}
+
+
+@media (min-height: 700px) {
+  .movie-detail .full {
+    padding-top: 40px;
+  }
+}
+
+@media (min-height: 800px) {
+  .movie-detail .full {
+    padding-top: 100px;
+  }
+}

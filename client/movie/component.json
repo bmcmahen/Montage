@@ -14,18 +14,23 @@
     "bmcmahen/slider": "*",
     "bmcmahen/backbone": "*",
     "bmcmahen/hold": "*",
-    "component/tip" : "*"
+    "component/tip" : "*",
+    "bmcmahen/zoom": "*",
+    "bmcmahen/tabs": "*"
   },
   "license": "MIT",
   "main": "index.js",
   "scripts": [
     "index.js",
+    "tabs.js",
+    "meta.js",
     "playback.js"
   ],
   "styles": [
-    "index.styl",
-    "toggle.styl",
-    "tip.styl"
+    "styles/index.styl",
+    "styles/toggle.styl",
+    "styles/tip.styl",
+    "styles/zoom.styl"
   ],
   "locals": [
     "session",

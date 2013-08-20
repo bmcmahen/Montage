@@ -128,6 +128,7 @@ function Playback(movie){
 
   // Our playback wrapper/template
   this.$el = dom(require('./templates/playback.html'));
+  this.$el.addClass('tab-item');
   this.reactive = reactive(this.$el.get(), this.model, this);
 
   // Our meta1 template
@@ -409,7 +410,6 @@ Playback.prototype.toggleLocalPlayback = function(time){
 };
 
 Playback.prototype.onload = function(e, time){
-  console.log('onload!', time, this.video);
   this.metadataloaded = true;
   if (time && this.video) this.video.currentTime = time * 60;
 }
@@ -431,7 +431,6 @@ Playback.prototype.image_url = function(){
 };
 
 Playback.prototype.quitMovie = function(e){
-  console.log('quit movie!');
   ddp.call('stopVideo');
   this.model.set('isPlaying', false);
   this.model.set('TVplaybackStarted', false);

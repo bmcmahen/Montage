@@ -753,39 +753,20 @@ MovieItem.prototype.changePoster = function(){
 };
 
 MovieItem.prototype.selectMovie = function(e){
-  // e.preventDefault();
   e.stopPropagation();
   if (this.model.get('file_missing')) {
     return;
   }
-
   if (this.holding){
     this.holding = false;
     return;
   }
-
-  var self = this;
-
-  var backdrop = this.model.get('original_backdrop_path')
-    ? '/movies/w1280'+ this.model.get('original_backdrop_path')
-    : null;
-
-  Session.set('imageZoom', {
-    origin: {
-      left: this.pos.left,
-      top: this.pos.top,
-      width: BOX_WIDTH
-    },
-    url : backdrop,
-    model: self.model,
-    fn : function(zoom){
-      zoom.on('showing', function(){
-        setTimeout(function(){
-          Session.set('selected_movie', self.model);
-        }, 400);
-      });
-    }
-  });
+  this.model.pos = {
+    left: this.pos.left,
+    top: this.pos.top + 50,
+    width: BOX_WIDTH
+  };
+  Session.set('selected_movie', this.model);
 };
 
 MovieItem.prototype.unbind = function(){

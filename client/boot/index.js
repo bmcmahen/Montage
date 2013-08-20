@@ -77,15 +77,5 @@ var Session = require('session');
 
 })();
 
-
-///////////////////////////////////
-// Handle Selected Movie Display //
-///////////////////////////////////
-
-// xxx rethink this. pretty bad...
-
-
-
 require('current_playback');
 require('movie');
-require('image_zoom');

@@ -36,7 +36,6 @@
     "loading",
     "modal",
     "current_playback",
-    "session",
-    "image_zoom"
+    "session"
   ]
 }

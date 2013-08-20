@@ -48,7 +48,6 @@ var DrawerController = View.extend({
 	},
 
 	show : function(){
-		console.log('SHOW!');
 		var self = this;
 		this.showing = true;
 		this.$body.addClass('nav-drawer-open');
